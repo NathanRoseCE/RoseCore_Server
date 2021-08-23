@@ -1,0 +1,23 @@
+services:
+  web:
+    build: ./src
+    environment:
+      MYENV: EXAMPLE
+    expose:
+      - "8000"
+    volumes:
+      - ./rosecore/:/usr/src/rosecore/
+      - rosecore_temp_db:/etc/rosecore/
+  web_migrate:
+    extends:
+      service: web
+    command: python manage.py migrate
+  web_run:
+    extends:
+      service: web
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "80:8000"
+      
+volumes:
+  rosecore_temp_db:

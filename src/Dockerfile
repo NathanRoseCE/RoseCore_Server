@@ -1,44 +1,24 @@
-# Base Image
-FROM python:3.6
+FROM python:3.8.3-alpine
+# set default environment variables
+ENV PYTHONUNBUFFERED 1
 
-# create and set working directory
+# pull official base image
+FROM python:3.8.3-alpine
+
+# set work directory
 RUN mkdir /RoseCore
 WORKDIR /RoseCore
 
-# Add current directory code to working directory
-ADD . /RoseCore
-
-# set default environment variables
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive 
 
-# set project environment variables
-# grab these via Python's os.environ
-# these are 100% optional here
-ENV PORT=8000
+# install dependencies
+RUN pip install --upgrade pip
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        tzdata \
-        python3-setuptools \
-        python3-pip \
-        python3-dev \
-        python3-venv \
-        git \
-        && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-
-# install environment dependencies
-RUN pip3 install --upgrade pip 
-RUN pip3 install pipenv \
-    	 	 gunicorn \
-		 django
-
-# Install project dependencies
-RUN pipenv install --skip-lock --dev
-
-EXPOSE $PORT
-CMD gunicorn RoseCore.wsgi:application --bind 0.0.0.0:$PORT
+# copy project
+COPY . .
