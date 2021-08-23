@@ -1,24 +1,30 @@
-FROM python:3.8.3-alpine
-# set default environment variables
-ENV PYTHONUNBUFFERED 1
-
 # pull official base image
 FROM python:3.8.3-alpine
 
 # set work directory
-RUN mkdir /RoseCore
-WORKDIR /RoseCore
+WORKDIR /usr/src/rosecore
 
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV LANG C.UTF-8
-ENV DEBIAN_FRONTEND=noninteractive 
 
+# install psycopg2 dependencies
+RUN apk update \
+    && apk add postgresql-dev gcc python3-dev musl-dev
+    
 # install dependencies
 RUN pip install --upgrade pip
 COPY ./requirements.txt .
 RUN pip install -r requirements.txt
 
+EXPOSE 8000
+
+# copy entrypoint.sh
+COPY ./entrypoint.sh .
+
 # copy project
 COPY . .
+
+
+# run entrypoint.sh
+ENTRYPOINT ["/usr/src/rosecore/entrypoint.sh"]
