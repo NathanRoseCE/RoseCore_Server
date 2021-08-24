@@ -2,6 +2,7 @@
 FROM python:3.8.3-alpine
 
 # set work directory
+RUN mkdir /usr/src/rosecore
 WORKDIR /usr/src/rosecore
 
 # set environment variables

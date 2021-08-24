@@ -4,6 +4,7 @@
     <title>New Project</title>
   </head>
   <body>
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
     <form action="{% url 'project:create_project' %}" method="post">
       {% csrf_token %}
       {{ form }}

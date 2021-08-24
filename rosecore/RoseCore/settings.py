@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '$#k3i6v93%b*5pt=$fiyag*79owj&-$+8-fas33x43$qj_0$ck'
+SECRET_KEY = os.environ.get('TODOIST_KEY', default='shhhh')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
@@ -123,3 +123,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+# application configuration: TODO improve this
+TODOIST_KEY = os.environ.get('TODOIST_KEY', default="")

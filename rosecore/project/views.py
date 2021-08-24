@@ -1,35 +1,47 @@
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse
-from .models import Project
 from .forms import ProjectForm
+from .services import ProjectService
+from .exceptions import InvalidProject
 
 # Create your views here.
 
 
 def index(request):
-    project_list = Project.objects.all()
+    project_list = ProjectService.get_projects()
     return render(request, 'project/index.html', {'project_list': project_list})
 
 
 def projectInfo(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
+    project = ProjectService.get_project_or_404(project_id)
     return render(request, 'project/projectInfo.html', {'project': project})
 
 
 def createProject(request):
     if request.method == 'POST':
         form = ProjectForm(request.POST)
+        error_message = ""
         if form.is_valid():
-            new_project = form.save(commit=False)
-            #TODO put id validation here
-            new_project.save()
-            return HttpResponseRedirect(reverse('project:index'))
+            validProject = False
+            try:
+                ProjectService.createProject(
+                    name=form.fields["name"],
+                    todoistId=form.fields["todoistId"],
+                    togglId=form.fields["togglId"]
+                )
+                validProject = True
+            except InvalidProject as e:
+                error_message = str(e)
+            if validProject:
+                return HttpResponseRedirect(reverse('project:index'))
+        else:
+            error_message += "Form is not valid"
         returnData = {
             'form': form,
-            'error_message': 'form is not valid'
+            'error_message': error_message
         }
     else:
         returnData = {
