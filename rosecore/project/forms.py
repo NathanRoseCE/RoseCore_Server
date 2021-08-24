@@ -3,9 +3,15 @@ from . import models
 
 
 class ProjectForm(forms.ModelForm):
-    togglId = forms.CharField(label="Toggl Id", max_length=20, required=False)
-    todoistId = forms.CharField(label="Todoist Id", max_length=20, required=False)
+     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].required = True
+        self.fields['togglId'].required = True
+        self.fields['todoistId'].required = True
 
     class Meta:
         model = models.Project
         fields = '__all__'
+
+    
