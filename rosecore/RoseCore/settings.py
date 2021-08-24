@@ -127,3 +127,5 @@ STATIC_URL = '/static/'
 
 # application configuration: TODO improve this
 TODOIST_KEY = os.environ.get('TODOIST_KEY', default="")
+TOGGL_WORKSPACE_ID = int(os.environ.get('TOGGL_WID', default=""))
+TOGGL_ID = os.environ.get('TOGGL_KEY', default="")

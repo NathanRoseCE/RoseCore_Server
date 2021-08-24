@@ -25,18 +25,8 @@ def createProject(request):
         form = ProjectForm(request.POST)
         error_message = ""
         if form.is_valid():
-            validProject = False
-            try:
-                ProjectService.createProject(
-                    name=form.fields["name"],
-                    todoistId=form.fields["todoistId"],
-                    togglId=form.fields["togglId"]
-                )
-                validProject = True
-            except InvalidProject as e:
-                error_message = str(e)
-            if validProject:
-                return HttpResponseRedirect(reverse('project:index'))
+            form.save()
+            return HttpResponseRedirect(reverse('project:index'))
         else:
             error_message += "Form is not valid"
         returnData = {
