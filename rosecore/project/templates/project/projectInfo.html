@@ -4,11 +4,12 @@
     <title>{{ project.name }}</title>
   </head>
   <body>
-    <p> Info for {{ project.name }} </p>
-    <ul>
-      <li> TodoistId: {{ project.todoistId }}</li>
-      <li> TogglId: {{ project.togglId }}</li>
-    </ul>
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <form action="{% url 'project:project_info' project_id=project_id %}" method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="submit" value="Submit">
+    </form>
   </body>
 <html>
   

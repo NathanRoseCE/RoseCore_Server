@@ -17,7 +17,25 @@ def index(request):
 
 def projectInfo(request, project_id):
     project = ProjectService.get_project_or_404(project_id)
-    return render(request, 'project/projectInfo.html', {'project': project})
+    if request.method == 'POST':
+        form = ProjectForm(request.POST, instance=project)
+        error_message = ""
+        if form.is_valid():
+            form.execute(project_id=project_id)
+            return HttpResponseRedirect(reverse('project:index'))
+        else:
+            error_message += "Form is not valid"
+        returnData = {
+            'project_id': project_id,
+            'form': form,
+            'error_message': error_message
+        }
+    else:
+        returnData = {
+            'project_id': project_id,
+            'form': ProjectForm(instance=project)
+        }
+    return render(request, 'project/projectInfo.html', returnData)
 
 
 def createProject(request):
@@ -25,7 +43,7 @@ def createProject(request):
         form = ProjectForm(request.POST)
         error_message = ""
         if form.is_valid():
-            form.save()
+            form.execute()
             return HttpResponseRedirect(reverse('project:index'))
         else:
             error_message += "Form is not valid"

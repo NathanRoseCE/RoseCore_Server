@@ -24,22 +24,33 @@ class ProjectService:
         todoistId = args["todoistId"] if "todoistId" in args else ""
         togglId = args["togglId"] if "togglId" in args else ""
         if todoistId:
+            print("validate Toggl")
             ProjectService.validateTodoistId(todoistId)
         else:
+            print("create Todoist")
             todoistId = TodoistService.createProject(name)
 
         if togglId:
+            print("validate Toggl")
             ProjectService.validateTogglId(togglId)
         else:
+            print("create Toggle")
             togglId = TogglService.createProject(name)
         project = Project(
             name=name,
             todoistId=todoistId,
             togglId=togglId
         )
-        project.save()
+        if args["commit"]:
+            project.save()
         return project
 
+    @staticmethod
+    def updateProject(project: Project)->Project:
+        TodoistService.updateProject({"id": project.todoistId, "name": project.name})
+        TogglService.updateProject({"id": project.togglId, "name": project.name})
+        project.save()
+        
     @staticmethod
     def validateTodoistId(todoistId: str):
         if not (todoistId in [project["id"] for project in TodoistService.getAllProjects()]):
@@ -103,19 +114,21 @@ class ProjectService:
 
     @staticmethod
     def _handleUnsynced(unsynced: dict) -> None:
-        [TodoistService.createProject(project.name)
-         for project in unsynced["todoist"]["create"]]
-        [TodoistService.update(project)
-         for project in unsynced["todoist"]["update"]]
         [TodoistService.deleteProject(project["id"])
          for project in unsynced["todoist"]["delete"]]
+        [TodoistService.update(project)
+         for project in unsynced["todoist"]["update"]]
+        for project in unsynced["todoist"]["create"]:
+            project.todoistId = TodoistService.createProject(project.name)
+            project.save()
 
-        [TogglService.createProject(project.name)
-         for project in unsynced["toggl"]["create"]]
-        [TogglService.update(project)
-         for project in unsynced["toggl"]["update"]]
         [TogglService.deleteProject(project["id"])
          for project in unsynced["toggl"]["delete"]]
+        [TogglService.update(project)
+         for project in unsynced["toggl"]["update"]]
+        for project in unsynced["toggl"]["create"]:
+            project.togglId = TogglService.createProject(project.name)
+            project.save()
 
 
 class TodoistService:
