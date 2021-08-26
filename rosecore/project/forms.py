@@ -8,7 +8,7 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = models.Project
-        fields = ['name']
+        fields = ['name', 'parent']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,7 +45,7 @@ class ProjectForm(forms.ModelForm):
             args["togglId"] = self.cleaned_data['togglId']
         if "todoistId" in self.cleaned_data:
             args["todoistId"] = self.cleaned_data['todoistId']
-
+        args["parent"] = self.cleaned_data['parent']
         if project_id is None:
             ProjectService.createProject(**args)
         else:

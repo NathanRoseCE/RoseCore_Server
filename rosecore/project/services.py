@@ -23,10 +23,12 @@ class ProjectService:
     def createProject(name:str, commit=True, **args)->Project:
         todoistId = args["todoistId"] if "todoistId" in args else ""
         togglId = args["togglId"] if "togglId" in args else ""
+        parent=args["parent"] if "parent" in args else None
         if todoistId:
             ProjectService.validateTodoistId(todoistId)
         else:
-            todoistId = TodoistService.createProject(name)
+            todoistId = TodoistService.createProject(name,
+                                                     parent_id=parent.todoistId if parent is not None else None)
 
         if togglId:
             ProjectService.validateTogglId(togglId)
@@ -35,7 +37,8 @@ class ProjectService:
         project = Project(
             name=name,
             todoistId=todoistId,
-            togglId=togglId
+            togglId=togglId,
+            parent=parent
         )
         if commit:
             project.save()
@@ -43,7 +46,7 @@ class ProjectService:
 
     @staticmethod
     def updateProject(project: Project)->Project:
-        TodoistService.updateProject({"id": project.todoistId, "name": project.name})
+        TodoistService.updateProject({"id": project.todoistId, "name": project.name, "parent_id": project.parent.todoistId if project.parent is not None else None})
         TogglService.updateProject({"id": project.togglId, "name": project.name})
         project.save()
 
@@ -138,9 +141,10 @@ class TodoistService:
 
     @staticmethod
     def createProject(name: str, parent_id: str = None) -> str:
-        if parent_id is not None:
-            raise NotImplementedError()
-        project = TodoistService._todoist.projects.add(name)
+        if parent_id is None:
+            project = TodoistService._todoist.projects.add(name)
+        else:
+            project = TodoistService._todoist.projects.add(name, parent_id=int(parent_id))
         TodoistService._todoist.commit()
         return TodoistService._formatExport(project)["id"]
 
@@ -159,6 +163,8 @@ class TodoistService:
     @staticmethod
     def updateProject(data: dict) -> None:
         project = TodoistService._todoist.projects.get_by_id(int(data["id"]))
+        if data["parent_id"] is not None:
+            project.move(parent_id=int(data["parent_id"]))
         project.update(name=data["name"])
         TodoistService._todoist.commit()
 
