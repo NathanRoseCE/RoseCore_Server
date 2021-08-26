@@ -20,28 +20,24 @@ class ProjectService:
         return get_object_or_404(Project, pk=project_id)
 
     @staticmethod
-    def createProject(name:str, **args)->Project:
+    def createProject(name:str, commit=True, **args)->Project:
         todoistId = args["todoistId"] if "todoistId" in args else ""
         togglId = args["togglId"] if "togglId" in args else ""
         if todoistId:
-            print("validate Toggl")
             ProjectService.validateTodoistId(todoistId)
         else:
-            print("create Todoist")
             todoistId = TodoistService.createProject(name)
 
         if togglId:
-            print("validate Toggl")
             ProjectService.validateTogglId(togglId)
         else:
-            print("create Toggle")
             togglId = TogglService.createProject(name)
         project = Project(
             name=name,
             todoistId=todoistId,
             togglId=togglId
         )
-        if args["commit"]:
+        if commit:
             project.save()
         return project
 
@@ -50,7 +46,13 @@ class ProjectService:
         TodoistService.updateProject({"id": project.todoistId, "name": project.name})
         TogglService.updateProject({"id": project.togglId, "name": project.name})
         project.save()
-        
+
+    @staticmethod
+    def deleteProject(project: Project)->Project:
+        TodoistService.deleteProject(project.todoistId)
+        TogglService.deleteProject(project.togglId)
+        project.delete()
+    
     @staticmethod
     def validateTodoistId(todoistId: str):
         if not (todoistId in [project["id"] for project in TodoistService.getAllProjects()]):
@@ -150,6 +152,7 @@ class TodoistService:
 
     @staticmethod
     def getProject(id: str) -> dict:
+        TodoistService.sync()
         project = TodoistService._todoist.projects.get_by_id(int(id))
         return TodoistService._formatExport(project)
 
@@ -161,6 +164,7 @@ class TodoistService:
 
     @staticmethod
     def getAllProjects()->Iterable[dict]:
+        TodoistService.sync()
         return [
             TodoistService._formatExport(project) for project in TodoistService._todoist.state["projects"]
         ]

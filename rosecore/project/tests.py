@@ -24,6 +24,17 @@ class ProjectTest(TestCase):
         with self.assertRaises(ValidationError):
             p.full_clean()
 
+    def test_parent_relationship(self):
+        parent=Project(name="parent", togglId="parentId", todoistId="parentId")
+        child=Project(name="child", togglId="parentId", todoistId="parentId", parent=parent)
+        parent.save()
+        child.save()
+        self.assertEqual(child.parent, parent)
+        self.assertIn(child, parent.children.all())
+        child.delete()
+        parent.delete()
+        
+
 
 class ProjectServiceTest(TestCase):
     def setUp(self):
@@ -75,6 +86,16 @@ class ProjectServiceTest(TestCase):
         togglProject = TogglService.getProject(id=project.togglId)
         self.assertEqual(project.togglId, togglProject["id"])
         self.assertEqual(project.name, togglProject["name"])
+
+    def test_delete_project(self):
+        project = ProjectService.createProject("Test Project_delete")
+        id = project.id
+        todoistId = project.todoistId
+        togglId = project.togglId
+        ProjectService.deleteProject(project)
+        self.assertEqual(False, id in [project.id for project in Project.objects.all()])
+        self.assertEqual(False, todoistId in [project["id"] for project in TodoistService.getAllProjects()])
+        self.assertEqual(False, togglId in [project["id"] for project in TogglService.getAllProjects()])
 
     def test_noIdMatch(self):
         todoistProjects = [
@@ -217,7 +238,7 @@ class TodoistServiceTest(TestCase):
             self.assertEqual(
                 local.data["is_archived"] == 1, match["archived"]
             )
-
+        
 
 class TogglServiceTest(TestCase):
     def setUp(self):

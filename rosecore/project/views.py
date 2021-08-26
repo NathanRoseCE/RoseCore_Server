@@ -56,3 +56,9 @@ def createProject(request):
             'form': ProjectForm()
         }
     return render(request, 'project/createProject.html', returnData)
+
+
+def deleteProject(request, project_id):
+    project = ProjectService.get_project_or_404(project_id)
+    ProjectService.deleteProject(project)
+    return HttpResponseRedirect(reverse('project:index'))
