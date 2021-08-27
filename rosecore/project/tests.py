@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.core.validators import ValidationError
 from django.conf import settings
 from todoist.api import TodoistAPI
-
+import json
 from .models import Project
 from .services import ProjectService, TodoistService, TogglService
 from .exceptions import InvalidProject
@@ -33,7 +33,6 @@ class ProjectTest(TestCase):
         self.assertIn(child, parent.children.all())
         child.delete()
         parent.delete()
-        
 
 
 class ProjectServiceTest(TestCase):
@@ -134,7 +133,8 @@ class ProjectServiceTest(TestCase):
                 "archived": False
             }
         ]
-        results = ProjectService._nonIdMatch(todoistProjects.copy(), togglProjects.copy())
+        projects = Project.objects.all()
+        results = ProjectService._nonIdMatch(projects, todoistProjects.copy(), togglProjects.copy())
 
         self.assertEqual(todoistProjects[1] in results["todoist"]["update"], True)
         self.assertEqual(len(results["todoist"]["update"]), 1)
@@ -146,6 +146,89 @@ class ProjectServiceTest(TestCase):
         self.assertEqual(todoistProjects[2] in results["toggl"]["delete"], True)
         self.assertEqual(len(results["toggl"]["delete"]), 1)
 
+    def test_nameMatch(self):
+        projects = [
+            Project(
+                name="test name match one",
+                todoistId="123",
+                togglId="342",
+            ),
+            Project(
+                name="test name match two",
+                todoistId="124",
+                togglId="3433",
+             )
+        ]
+        idResults={
+            "todoist": {
+                "delete": [
+                    {
+                        "name": "test name match one",
+                        "id": "correctTodoistIdOne"
+                    },
+                    {
+                        "name": "deleteThisStill",
+                        "id": "dafdsaljkl"
+                    }
+                ],
+                "update":[]
+            },
+            "toggl": {
+                "delete": [
+                    {
+                        "name": "test name match one",
+                        "id": "correctTogglIdOne"
+                    },
+                    {
+                        "name": "deleteThisStill",
+                        "id": "fljakl;fjds"
+                    }
+                ],
+                "update":[]
+            }
+        }
+        results = ProjectService._parseForNameMatches(projects, idResults)
+        self.assertEqual(
+            projects[0].todoistId, "correctTodoistIdOne"
+        )
+        self.assertEqual(
+            projects[0].togglId, "correctTogglIdOne"
+        )
+        self.assertEqual(
+            "test name match one" in [project["name"] for project in results["todoist"]["update"]],
+            True
+        )
+        self.assertEqual(
+            "test name match one" in [project["name"] for project in results["toggl"]["update"]],
+            True
+        )
+        self.assertEqual(
+            "test name match one" in [project["name"] for project in results["todoist"]["delete"]],
+            False
+        )
+        self.assertEqual(
+            "test name match one" in [project["name"] for project in results["toggl"]["delete"]],
+            False
+        )
+        #---
+        self.assertEqual(
+            "deleteThisStill" in [project["name"] for project in results["todoist"]["update"]],
+            False
+        )
+        self.assertEqual(
+            "deleteThisStill" in [project["name"] for project in results["todoist"]["delete"]],
+            True
+        )
+        self.assertEqual(
+            "deleteThisStill" in [project["name"] for project in results["toggl"]["update"]],
+            False
+        )
+        self.assertEqual(
+            "deleteThisStill" in [project["name"] for project in results["toggl"]["delete"]],
+            True
+        )
+        
+        
 
 class TodoistServiceTest(TestCase):
     def setUp(self):

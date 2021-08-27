@@ -75,17 +75,41 @@ class ProjectService:
         TodoistService.sync()
         todoistProjects = TodoistService.getAllProjects()
         togglProjects = TogglService.getAllProjects()
-        unsynced = ProjectService._nonIdMatch(todoistProjects, togglProjects)
+        projects = Project.objects.all()
+        unsynced = ProjectService._nonIdMatch(projects, todoistProjects, togglProjects)
+        unsynced = ProjectService._parseForNameMatches(projects, unsynced)
+        [project.save() for project in projects]
         ProjectService._handleUnsynced(unsynced)
 
     @staticmethod
-    def _nonIdMatch(todoistProjects: dict, togglProjects: dict) -> dict:
+    def _parseForNameMatches(projects, idResults: dict):
+        for project in projects:
+            try:
+                nameMatch = [tProject for tProject in idResults["todoist"]["delete"]
+                             if tProject["name"] == project.name][0]
+                idResults["todoist"]["update"].append(nameMatch)
+                idResults["todoist"]["delete"].remove(nameMatch)
+                project.todoistId=nameMatch["id"]
+            except IndexError:
+                pass
+            try:
+                nameMatch = [tProject for tProject in idResults["toggl"]["delete"]
+                             if tProject["name"] == project.name][0]
+                idResults["toggl"]["update"].append(nameMatch)
+                idResults["toggl"]["delete"].remove(nameMatch)
+                project.togglId=nameMatch["id"]
+            except IndexError:
+                pass
+        return idResults
+    
+    @staticmethod
+    def _nonIdMatch(projects, todoistProjects: dict, togglProjects: dict) -> dict:
         todoistCreate = []
         todoistUpdate = []
         togglCreate = []
         togglUpdate = []
 
-        for project in Project.objects.all():
+        for project in projects:
             try:
                 match = [todoistProject for todoistProject in todoistProjects
                          if todoistProject["id"] == project.todoistId][0]
