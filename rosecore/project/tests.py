@@ -2,11 +2,37 @@ from django.test import TestCase
 from django.core.validators import ValidationError
 from django.conf import settings
 from todoist.api import TodoistAPI
-import json
+from django.urls import reverse
 from .models import Project
 from .services import ProjectService, TodoistService, TogglService
 from .exceptions import InvalidProject
 
+
+class ProjectIndexViewTests(TestCase):
+    def test_no_projects(self):
+        response = self.client.get(reverse("project:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Its empty here, want to create a project?")
+
+    def test_projects_viewable(self):
+        projectOne = Project.objects.create(name="test")
+        projectTwo = Project.objects.create(name="testTwo")
+        response = self.client.get(reverse("project:index"))
+        self.assertContains(
+            response,
+            projectOne
+        )
+        self.assertContains(
+            response,
+            projectTwo
+        )
+
+
+class ProjectDetailedViewTests(TestCase):
+    def test_view_project(self):
+        project = Project.objects.create(name="testThree")
+        response = self.client.get(reverse("project:project_info", args=(project.id,)))
+        self.assertContains(response, project.name)
 
 class ProjectTest(TestCase):
     def test_todoist_id_required(self):
@@ -159,7 +185,7 @@ class ProjectServiceTest(TestCase):
                 togglId="3433",
              )
         ]
-        idResults={
+        idResults = {
             "todoist": {
                 "delete": [
                     {
@@ -210,7 +236,7 @@ class ProjectServiceTest(TestCase):
             "test name match one" in [project["name"] for project in results["toggl"]["delete"]],
             False
         )
-        #---
+        # ---
         self.assertEqual(
             "deleteThisStill" in [project["name"] for project in results["todoist"]["update"]],
             False
@@ -227,8 +253,7 @@ class ProjectServiceTest(TestCase):
             "deleteThisStill" in [project["name"] for project in results["toggl"]["delete"]],
             True
         )
-        
-        
+
 
 class TodoistServiceTest(TestCase):
     def setUp(self):
