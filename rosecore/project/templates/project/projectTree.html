@@ -1,0 +1,9 @@
+<li><a href="{% url 'project:project_info' project.id %}">{{ project.name }}</a>
+{% if project.children.all %}
+<ul>
+  {% for child in project.children.all %}
+  {% include "project/projectTree.html" with project=child %}
+  {% endfor %}
+</ul>
+{% endif %}
+</li>

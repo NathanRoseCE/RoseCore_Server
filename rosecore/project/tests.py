@@ -77,7 +77,21 @@ class ProjectServiceTest(TestCase):
                 TodoistService.deleteProject(project.todoistId)
             if project.togglId != "":
                 TogglService.deleteProject(project.togglId)
-            project.delete()
+            try:
+                project.delete()
+            except Exception:
+                pass
+
+    def test_root_project_service(self):
+        childOne = Project(name="test_child", togglId="assdf", todoistId="sfffdsafafds", parent=self.projectOne)
+        childTwo = Project(name="test_childTwo", togglId="asdsaf", todoistId="safdfdjsklas", parent=self.projectTwo)
+        childOne.save()
+        childTwo.save()
+        roots = ProjectService.get_root_projects()
+        self.assertIn(self.projectOne, roots)
+        self.assertIn(self.projectTwo, roots)
+        self.assertNotIn(childOne, roots)
+        self.assertNotIn(childTwo, roots)
 
     def test_get_projects(self):
         projects = ProjectService.get_projects(limit=1)

@@ -11,7 +11,7 @@ from .exceptions import InvalidProject
 
 
 def index(request):
-    project_list = ProjectService.get_projects()
+    project_list = ProjectService.get_root_projects()
     return render(request, 'project/index.html', {'project_list': project_list})
 
 

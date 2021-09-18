@@ -45,6 +45,11 @@ class ProjectService:
         return project
 
     @staticmethod
+    def get_root_projects(limit=None):
+        return Project.objects.all().filter(parent=None)
+
+    
+    @staticmethod
     def updateProject(project: Project)->Project:
         TodoistService.updateProject({"id": project.todoistId, "name": project.name, "parent_id": project.parent.todoistId if project.parent is not None else None})
         TogglService.updateProject({"id": project.togglId, "name": project.name})

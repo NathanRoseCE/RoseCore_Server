@@ -9,7 +9,7 @@
     <p> Want to <a href="{% url 'project:sync' %}"> Sync?</a></p>
     <ul>
       {% for project in project_list %}
-      <li><a href="{% url 'project:project_info' project.id %}">{{ project.name }}</a></li>
+      {%include "project/projectTree.html" with project=project%}
       {% endfor %}
     </ul>
     {% else %}
