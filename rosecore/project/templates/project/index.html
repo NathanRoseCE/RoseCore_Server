@@ -6,6 +6,7 @@
   <body>
     {% if project_list %}
     <p> Here All all of the projects </p>
+    <p> Want to <a href="{% url 'project:sync' %}"> Sync?</a></p>
     <ul>
       {% for project in project_list %}
       <li><a href="{% url 'project:project_info' project.id %}">{{ project.name }}</a></li>
@@ -13,6 +14,7 @@
     </ul>
     {% else %}
     <p> Its empty here, want to create a project? </p>
+    <p> Or you can try to <a href="{% url 'project:sync' %}"> Sync!</a></p>
     {% endif %}
     <a href="{% url 'project:create_project' %}">Create a new Project</a>
   </body>

@@ -25,7 +25,9 @@ SECRET_KEY = os.environ.get('TODOIST_KEY', default='shhhh')
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 DEBUG = int(os.environ.get('DEBUG', default=1))
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '*' # ya this is behind a vpn, for a personal server and I'm lazy
+]
 
 
 # Application definition
