@@ -12,6 +12,8 @@ services:
       - ./.env.dev
     depends_on:
       - db
+    networks:
+      - rosecore
   db:
     image: postgres:12.0-alpine
     volumes:
@@ -22,6 +24,10 @@ services:
       - POSTGRES_USER=hello_django
       - POSTGRES_PASSWORD=hello_django
       - POSTGRES_DB=hello_django_dev
-
+    networks:
+      - rosecore
 volumes:
   postgres_data:
+
+networks:
+  rosecore:
