@@ -1,8 +1,9 @@
 from django import forms
-from . import models
-from .services import ProjectService
-from .exceptions import InvalidProject
+from productivity import models
+from productivity.services.ProjectService import ProjectService
+from productivity.utilities.exceptions import InvalidProject
 from django.core.exceptions import ValidationError
+
 
 class ProjectForm(forms.ModelForm):
 

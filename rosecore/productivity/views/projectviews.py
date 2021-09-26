@@ -1,13 +1,9 @@
 
 from django.shortcuts import render
-from django.http import HttpResponse, Http404, HttpResponseRedirect
-from django.template import loader
+from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .forms import ProjectForm
-from .services import ProjectService
-from .exceptions import InvalidProject
-
-# Create your views here.
+from productivity.forms.ProjectForm import ProjectForm
+from productivity.services import ProjectService
 
 
 def index(request):
@@ -22,7 +18,7 @@ def projectInfo(request, project_id):
         error_message = ""
         if form.is_valid():
             form.execute(project_id=project_id)
-            return HttpResponseRedirect(reverse('project:index'))
+            return HttpResponseRedirect(reverse('productivity:index'))
         else:
             error_message += "Form is not valid"
         returnData = {
@@ -44,7 +40,7 @@ def createProject(request):
         error_message = ""
         if form.is_valid():
             form.execute()
-            return HttpResponseRedirect(reverse('project:index'))
+            return HttpResponseRedirect(reverse('productivity:index'))
         else:
             error_message += "Form is not valid"
         returnData = {
@@ -61,9 +57,9 @@ def createProject(request):
 def deleteProject(request, project_id):
     project = ProjectService.get_project_or_404(project_id)
     ProjectService.deleteProject(project)
-    return HttpResponseRedirect(reverse('project:index'))
+    return HttpResponseRedirect(reverse('productivity:index'))
 
 
 def sync(request):
     ProjectService.sync()
-    return HttpResponseRedirect(reverse('project:index'))
+    return HttpResponseRedirect(reverse('productivity:index'))

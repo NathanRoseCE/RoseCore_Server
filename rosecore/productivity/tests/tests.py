@@ -3,9 +3,11 @@ from django.core.validators import ValidationError
 from django.conf import settings
 from todoist.api import TodoistAPI
 from django.urls import reverse
-from .models import Project
-from .services import ProjectService, TodoistService, TogglService
-from .exceptions import InvalidProject
+from productivity.models.Project import Project
+from productivity.services.ProjectService import ProjectService
+from productivity.services.TodoistService import TodoistService
+from productivity.services.TogglService import TogglService
+from productivity.utilities.exceptions import InvalidProject
 
 
 class ProjectIndexViewTests(TestCase):

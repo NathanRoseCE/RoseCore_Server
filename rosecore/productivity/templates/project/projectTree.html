@@ -1,4 +1,4 @@
-<li><a href="{% url 'project:project_info' project.id %}">{{ project.name }}</a>
+<li><a href="{% url 'productivity:project_info' project.id %}">{{ project.name }}</a>
 {% if project.children.all %}
 <ul>
   {% for child in project.children.all %}

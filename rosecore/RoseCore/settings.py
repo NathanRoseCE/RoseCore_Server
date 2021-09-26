@@ -34,7 +34,7 @@ ALLOWED_HOSTS = [
 
 INSTALLED_APPS = [
     'RoseCore.apps.RoseCore',
-    'project.apps.ProjectConfig',
+    'productivity.apps.ProductivityConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
