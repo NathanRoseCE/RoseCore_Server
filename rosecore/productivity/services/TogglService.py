@@ -2,6 +2,7 @@ from django.conf import settings
 import requests
 import json
 from requests.auth import HTTPBasicAuth
+from productivity.utilities.exceptions import APIThrottled
 
 
 class TogglService:

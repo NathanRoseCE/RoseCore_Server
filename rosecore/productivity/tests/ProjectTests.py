@@ -1,10 +1,8 @@
+from productivity.services.ProjectService import ProjectService
 from django.test import TestCase
-from django.core.validators import ValidationError
-from django.conf import settings
-from todoist.api import TodoistAPI
 from django.urls import reverse
 from productivity.models.Project import Project
-from productivity.services.ProjectService import ProjectService
+from django.core.validators import ValidationError
 from productivity.services.TodoistService import TodoistService
 from productivity.services.TogglService import TogglService
 from productivity.utilities.exceptions import InvalidProject
@@ -12,14 +10,14 @@ from productivity.utilities.exceptions import InvalidProject
 
 class ProjectIndexViewTests(TestCase):
     def test_no_projects(self):
-        response = self.client.get(reverse("project:index"))
+        response = self.client.get(reverse("productivity:index"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Its empty here, want to create a project?")
 
     def test_projects_viewable(self):
         projectOne = Project.objects.create(name="test")
         projectTwo = Project.objects.create(name="testTwo")
-        response = self.client.get(reverse("project:index"))
+        response = self.client.get(reverse("productivity:index"))
         self.assertContains(
             response,
             projectOne
@@ -33,8 +31,9 @@ class ProjectIndexViewTests(TestCase):
 class ProjectDetailedViewTests(TestCase):
     def test_view_project(self):
         project = Project.objects.create(name="testThree")
-        response = self.client.get(reverse("project:project_info", args=(project.id,)))
+        response = self.client.get(reverse("productivity:project_info", args=(project.id,)))
         self.assertContains(response, project.name)
+
 
 class ProjectTest(TestCase):
     def test_todoist_id_required(self):
@@ -53,14 +52,12 @@ class ProjectTest(TestCase):
             p.full_clean()
 
     def test_parent_relationship(self):
-        parent=Project(name="parent", togglId="parentId", todoistId="parentId")
-        child=Project(name="child", togglId="parentId", todoistId="parentId", parent=parent)
+        parent = Project(name="parent", togglId="parentId", todoistId="parentId")
+        child = Project(name="child", togglId="parentId", todoistId="parentId", parent=parent)
         parent.save()
         child.save()
         self.assertEqual(child.parent, parent)
         self.assertIn(child, parent.children.all())
-        child.delete()
-        parent.delete()
 
 
 class ProjectServiceTest(TestCase):
@@ -268,129 +265,4 @@ class ProjectServiceTest(TestCase):
         self.assertEqual(
             "deleteThisStill" in [project["name"] for project in results["toggl"]["delete"]],
             True
-        )
-
-
-class TodoistServiceTest(TestCase):
-    def setUp(self):
-        self.api = TodoistAPI(settings.TODOIST_KEY)
-        for project in self.api.state['projects']:
-            project.delete()
-        self.api.commit()
-
-    def tearDown(self):
-        self.api.sync()
-        for project in self.api.state['projects']:
-            project.delete()
-        self.api.commit()
-
-    def test_create_project(self):
-        name = "testName"
-        someId = TodoistService.createProject(name=name)
-        self.api.sync()
-        self.assertEqual(
-            name in [project.data["name"] for project in self.api.state['projects']],
-            True
-        )
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
-
-        self.assertEqual(
-            str(matchingProject.data["id"]),
-            someId
-        )
-
-    def test_update_project(self):
-        name = "testName"
-        someId = TodoistService.createProject(name=name)
-        self.api.sync()
-        self.assertEqual(
-            name in [project.data["name"] for project in self.api.state['projects']],
-            True
-        )
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
-        self.assertEqual(
-            str(matchingProject.data["id"]),
-            someId
-        )
-        name = "testNameTwo"
-        matchingProject["name"] = name
-        TodoistService.updateProject(data=matchingProject)
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
-        self.assertEqual(
-            str(matchingProject.data["id"]),
-            someId
-        )
-
-    def test_delete_project(self):
-        project = self.api.projects.add("test")
-        self.api.commit()
-        TodoistService.deleteProject(id=project.data["id"])
-        self.api.sync()
-        self.assertEqual(
-            self.api.projects.get_by_id(project.data["id"]),
-            None
-        )
-
-    def test_get_project_by_id(self):
-        correct = self.api.projects.add("test")
-        self.api.commit()
-        actual = TodoistService.getProject(correct.data["id"])
-        self.assertEqual(str(correct.data["id"]), actual["id"])
-        self.assertEqual(correct.data["name"], actual["name"])
-        self.assertEqual(correct.data["parent_id"], actual["parent_id"])
-        self.assertEqual(correct.data["is_archived"] == 1, actual["archived"])
-
-    def test_get_projects(self):
-        self.api.projects.add("testOne")
-        self.api.projects.add("testTwo")
-        self.api.commit()
-        self.api.sync()
-        TodoistService.sync()
-        for local in self.api.state["projects"]:
-            self.assertEqual(
-                str(local.data["id"]) in [remote["id"] for remote in TodoistService.getAllProjects()],
-                True
-            )
-            match = [project for project in TodoistService.getAllProjects() if str(local.data["id"]) == project["id"]][0]
-            self.assertEqual(
-                local.data["name"], match["name"]
-            )
-            parent_id = str(local.data["parent_id"]) if local.data["parent_id"] is not None else None
-            self.assertEqual(
-                parent_id, match["parent_id"]
-            )
-            self.assertEqual(
-                local.data["is_archived"] == 1, match["archived"]
-            )
-        
-
-class TogglServiceTest(TestCase):
-    def setUp(self):
-        self.wid = settings.TOGGL_WORKSPACE_ID
-        self.togglId = settings.TOGGL_ID
-
-    def test_createProjectAndDelete(self):
-        testName = "test"
-        newId = TogglService.createProject(name=testName)
-        self.assertEqual(
-            newId, TogglService.getProject(newId)["id"]
-        )
-        self.assertEqual(
-            True, newId in [project["id"] for project in TogglService.getAllProjects()]
-        )
-        project = TogglService.getProject(newId)
-        self.assertEqual(
-            testName, project["name"]
-        )
-        testName = "newName"
-        project["name"] = testName
-        TogglService.updateProject(project)
-        project = TogglService.getProject(newId)
-        self.assertEqual(
-            testName, project["name"]
-        )
-
-        TogglService.deleteProject(id=newId)
-        self.assertEqual(
-            False, newId in [project["id"] for project in TogglService.getAllProjects()]
         )

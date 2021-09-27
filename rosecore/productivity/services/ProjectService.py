@@ -4,6 +4,7 @@ from .TodoistService import TodoistService
 from .TogglService import TogglService
 from productivity.utilities.exceptions import InvalidProject
 
+
 class ProjectService:
     @staticmethod
     def get_projects(limit=None, **filters):
@@ -99,7 +100,7 @@ class ProjectService:
             except IndexError:
                 pass
         return idResults
-    
+
     @staticmethod
     def _nonIdMatch(projects, todoistProjects: dict, togglProjects: dict) -> dict:
         todoistCreate = []
