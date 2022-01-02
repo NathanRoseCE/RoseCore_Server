@@ -44,7 +44,8 @@ class TodoistService:
 
     @staticmethod
     def sync()->None:
-        TodoistService._todoist.sync()
+        if not settings.TESTING:
+            TodoistService._todoist.sync()
 
     @staticmethod
     def _formatExport(project) -> dict:

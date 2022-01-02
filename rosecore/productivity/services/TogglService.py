@@ -1,85 +1,64 @@
 from django.conf import settings
 import requests
 import json
+import random
+from typing import List
 from requests.auth import HTTPBasicAuth
+from productivity.libs.Toggl.TogglTrack import TogglTrack
+from productivity.libs.Toggl.Project import Project
 
 
 class TogglService:
-    _id = settings.TOGGL_ID
-    _workspace_id = settings.TOGGL_WORKSPACE_ID
+    _toggl = TogglTrack(settings.TOGGL_WORKSPACE_ID,
+                        settings.TOGGL_ID,
+                        (not settings.TESTING))
 
     @staticmethod
     def getProject(id: str) -> dict:
-        response = requests.get(
-            "https://api.track.toggl.com/api/v8/projects/" + str(id),
-            auth=HTTPBasicAuth(TogglService._id, "api_token")
-        )
-        return TogglService._formatExport(TogglService._parseJsonResponse(response)["data"])
+        """
+        gets a project(may not my synced
+        """
+        project = [project for project in TogglService._toggl.projects if project.id == id][0]
+        return TogglService._formatExport(project)
 
     @staticmethod
-    def getAllProjects() -> dict:
-        response = requests.get(
-            "https://api.track.toggl.com/api/v8/workspaces/" + str(TogglService._workspace_id) + "/projects",
-            auth=HTTPBasicAuth(TogglService._id, "api_token"),
-        )
-        projects = TogglService._parseJsonResponse(response)
-        if projects is None:
-            return []
-        return [TogglService._formatExport(project) for project in projects]
+    def getAllProjects() -> List[dict]:
+        """
+        Gets all projects
+        """
+        return [TogglService._formatExport(project) for project in TogglService._toggl.projects]
 
     @staticmethod
-    def createProject(name: str) -> id:
-        response = requests.post(
-            "https://api.track.toggl.com/api/v8/projects",
-            auth=HTTPBasicAuth(TogglService._id, "api_token"),
-            data=json.dumps({"project": {
-                "name": name,
-                "wid": TogglService._workspace_id
-            }}),
-            headers={
-                "Content-Type": "application/json"
-            }
-        )
-        return TogglService._formatExport(TogglService._parseJsonResponse(response)["data"])["id"]
+    def createProject(name: str) -> int:
+        """
+        Creates a project and returns the toggl id,
+        if settings.TESTING then id is a faked id, not valid in toggl
+        """
+        project = TogglService._toggl.createProject(name)
+        if settings.TESTING:
+            TogglService._toggl.fake_id(project, random.randint(0, 10000000000))
+        project = [project for project in TogglService._toggl.projects if project.name == name][0]
+        return project.id
 
     @staticmethod
     def updateProject(data: dict) -> None:
-        response = requests.put(
-            "https://api.track.toggl.com/api/v8/projects/" + str(data["id"]),
-            auth=HTTPBasicAuth(TogglService._id, "api_token"),
-            data=json.dumps({"project": {
-                "name": data["name"],
-                "wid": TogglService._workspace_id
-            }}),
-            headers={
-                "Content-Type": "application/json"
-            }
-        )
-        TogglService._formatExport(TogglService._parseJsonResponse(response)["data"])
+        """
+        Updates a project, just name for now
+        """
+        project = [project for project in TogglService._toggl.projects if project.id == project.id][0]
+        TogglService._toggl.updateProject(project, data["name"])
+        TogglService._toggl.sync()
 
     @staticmethod
-    def deleteProject(id: str) -> id:
-        response = requests.delete(
-            "https://api.track.toggl.com/api/v8/projects/" + str(id),
-            auth=HTTPBasicAuth(TogglService._id, "api_token"),
-            headers={
-                "Content-Type": "application/json"
-            }
-        )
-        TogglService._parseJsonResponse(response)
+    def deleteProject(id: str) -> None:
+        project = [project for project in TogglService._toggl.projects if project.id == project.id][0]
+        TogglService._toggl.deleteProject(project)
+        TogglService._toggl.sync()
 
     @staticmethod
-    def _formatExport(project) -> dict:
+    def _formatExport(project: Project) -> dict:
         return {
-            "id": str(project["id"]),
-            "name": project["name"],
-            "archived": not project["active"]
+            "id": str(project.id),
+            "name": project.name,
+            "archived": not project.active
         }
-
-    @staticmethod
-    def _parseJsonResponse(response):
-        if str(response) != "<Response [200]>":
-            if str(response) == "<Response [429]>":
-                raise APIThrottled
-            raise Exception(response.text)
-        return json.loads(response.text)
