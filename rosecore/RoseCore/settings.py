@@ -16,7 +16,6 @@ import sys
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
@@ -30,6 +29,8 @@ ALLOWED_HOSTS = [
     '*' # ya this is behind a vpn, for a personal server and I'm lazy
 ]
 
+#backup directory location
+BACKUP_DIR='/usr/src/rosecore/backups/'
 
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 # Application definition
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [

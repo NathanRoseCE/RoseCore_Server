@@ -5,6 +5,9 @@ FROM python:3.8.3-alpine
 RUN mkdir /usr/src/rosecore
 WORKDIR /usr/src/rosecore
 
+# make backup dir
+RUN mkdir /usr/src/rosecore/backups/
+
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
