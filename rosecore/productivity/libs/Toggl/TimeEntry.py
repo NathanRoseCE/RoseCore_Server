@@ -7,28 +7,29 @@ from dateutil import parser
 
 @dataclass
 class TimeEntry:
+    id: int = -1
     description : str = ""
     start: datetime = None
     stop: datetime = None
     workspace_id: int = -1
     project_id: int = -1
     tags: List[str] = None
+    synced: bool = True
+    to_delete: bool = False
 
     def fromJson(self, jsonConfig) -> None:
-        self.description = jsonConfig["data"]["description"]
-        self.start = parser.parse(jsonConfig["data"]["start"])
-        self.stop = parser.parse(jsonConfig["data"]["stop"])
-        self.workspace_id = int(jsonConfig["data"]["wid"])
-        self.project_id = int(jsonConfig["data"]["pid"])
-        self.tags = jsonConfig["data"]["tags"]
+        self.description = jsonConfig["description"]
+        self.start = parser.parse(jsonConfig["start"])
+        self.stop = parser.parse(jsonConfig["stop"])
+        self.workspace_id = int(jsonConfig["wid"])
+        self.project_id = int(jsonConfig["pid"])
+        self.tags = jsonConfig["tags"]
 
     def toJson(self):
         returnJson =  {
-            "time_entry": {
-                "description": self.description,
-                "wid": self.workspace_id,
-                "pid": self.project_id
-            }
+            "description": self.description,
+            "wid": self.workspace_id,
+            "pid": self.project_id
         }
         if self.start is not None:
             returnJson["time_entry"]["stop"] = self.start.isoformat()

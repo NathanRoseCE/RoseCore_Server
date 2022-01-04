@@ -1,18 +1,27 @@
+from datetime import datetime
 import requests
 from typing import Dict, Any, List
 
 from requests.auth import HTTPBasicAuth
 from .Exceptions import APIThrottled
 from .Project import Project
+from .TimeEntry import TimeEntry
 from copy import copy
 import json
+
+from datetime import timedelta
+from pytz import timezone
 
 class TogglTrack:
     """
     The main API class for toggl track for rosecore, the changes are local until sync() is called
     """
     
-    def __init__(self, workspace_id: int, api_token: int, allowSync:bool=True):
+    def __init__(self,
+                 workspace_id: int,
+                 api_token: int,
+                 time_delta:timedelta=timedelta(weeks=1),
+                 allowSync:bool=True):
         """
         initializes the API
          - workspace_id: id of workspace
@@ -27,6 +36,10 @@ class TogglTrack:
         self._main_url = "https://api.track.toggl.com/api/v8"
         self._project_url = self._main_url + "/projects"
         self._workspace_url = self._main_url + "/workspaces/" + str(self._workspace_id)
+        self._time_entries_url = self._main_url + "/time_entries"
+        self._new_time_entries=[]
+        self._time_entries={}
+        self._time_delta = time_delta
 
     @property
     def projects(self) -> List[Project]:
@@ -36,6 +49,12 @@ class TogglTrack:
         projects = copy(self._new_projects)
         projects.extend([project for id, project in self._projects.items() if not project.to_delete])
         return projects
+
+    @property
+    def time_entries(self) -> List[TimeEntry]:
+        entries = copy(self._new_time_entries)
+        entries.extend([entry for id, entry in self._time_entries.items() if not entry.to_delete])
+        return entries
 
     def createProject(self, name: str) -> Project:
         """
@@ -55,8 +74,8 @@ class TogglTrack:
         if project.id in self._projects:
             self._projects[project.id].name = newName
             self._projects[project.id].synced = False
-        elif project.id in [m_project.id for m_project in self._new_projects]:
-            index = [m_project.id for m_project in self._new_projects].index(project.id)
+        elif project.name in [m_project.name for m_project in self._new_projects]:
+            index = [m_project.name for m_project in self._new_projects].index(project.name)
             project = self._new_projects[index]
             project.name = newName
             project.synced = False
@@ -175,7 +194,7 @@ class TogglTrack:
             raise Exception(response.text)
         return json.loads(response.text)
 
-    def fake_id(self, project: Project, id: int) -> None:
+    def fake_project_id(self, project: Project, id: int) -> None:
         """
         mocks a project that is only local with a fake ID,
         only use in testing
@@ -189,3 +208,95 @@ class TogglTrack:
             self._new_projects.remove(project)
         else:
             raise ValueError(f"{project.name} is not a known project")
+
+    def create_time_entry(self,
+                          project_id: int,
+                          description: str,
+                          tag_names: List[str],
+                          start_time: datetime = datetime.now()) -> TimeEntry:
+        """
+        Creates a time entry in toggle
+        """
+        time_entry = TimeEntry()
+        time_entry.description = description
+        time_entry.start = start_time
+        time_entry.workspace_id = self._workspace_id
+        time_entry.project_id = project_id
+        time_entry.tags = copy(tag_names)
+        time_entry.synced = False
+        self._new_time_entries.append(time_entry)
+        return time_entry
+
+    def update_time_entry(self,
+                          time_entry: TimeEntry,
+                          name: str = None,
+                          tags: List[str] = None)->None:
+        """
+        Updates a time entry
+        """
+        if time_entry.id in self._time_entries:
+            if name is not None:
+                self._time_entries[id].name = name
+                self._time_entries[id].synced = False
+            if tags is not None:
+                self._time_entries[id].tags = copy(tags)
+                self._time_entries[id].synced = False
+        elif time_entry.description in [entry.description for entry in self._new_time_entries]:
+            index = [entry.description for entry in self._new_time_entries].index(time_entry.description)
+            entry = self._new_time_entries[index]
+            if name is not None:
+                entry.description = name
+            if tags is not None:
+                entry.tags = copy(tags)
+        else:
+            raise ValueError("Time Entry {time_entry.description} is not known")
+        
+    def delete_time_entry(self, time_entry: TimeEntry) -> None:
+        """
+        Deletes a time Entry
+        """
+        if time_entry.id in self._time_entries:
+            self._time_entries[time_entry.id].to_delete = True
+        elif time_entry.description in [entry.description for entry in self._new_time_entries]:
+            entry = [entry for entry in self._new_time_entries
+                     if entry.description == time_entry.description][0]
+            self._new_time_entries.remove(entry)
+        else:
+            raise ValueError("Time Entry {time_entry.description} is not known")
+            
+    def stop_time_entry(self, time_entry: TimeEntry) -> None:
+        """
+        Stops a time entry
+        """
+        if time_entry.id in self._time_entries:
+            self._time_entries[time_entry.id].stop = datetime.now()
+        elif time_entry.description in [entry.description for entry in self._new_time_entries]:
+            entry = [entry for entry in self._new_time_entries
+                     if entry.description == time_entry.description][0]
+            entry.stop = datetime.now()
+        else:
+            raise ValueError("Time Entry {time_entry.description} is not known")
+
+    def _sync_time_entries(self, delta: timedelta=None) -> None:
+        """
+        gets all time entries within the delta, if none, uses self._time_delta
+        """
+
+    def _fetch_time_entries(self, delta: timedelta=None, refresh=True) -> None:
+        if refresh:
+            self._time_entries={}
+        if delta is None:
+            delta = self._time_delta
+        start_time = datetime.now(timezone('EST')) - delta
+        stop_time = datetime.now() + delta
+        response = requests.get(self._time_entries_url,
+                                auth=HTTPBasicAuth(self._api_token, "api_token"),
+                                params={
+                                    "start_date": start_time.isoformat("#", "seconds"),
+                                    "stop_date": stop_time.isoformat("#", "seconds"),
+                                })
+        entries_json = self._parseResponse(response)
+        for entry_json in entries_json:
+            entry = TimeEntry()
+            entry.fromJson(entry_json)
+            self._time_entries[entry.id] = entry

@@ -1,9 +1,6 @@
 from django.conf import settings
-import requests
-import json
 import random
 from typing import List
-from requests.auth import HTTPBasicAuth
 from productivity.libs.Toggl.TogglTrack import TogglTrack
 from productivity.libs.Toggl.Project import Project
 
@@ -11,7 +8,7 @@ from productivity.libs.Toggl.Project import Project
 class TogglService:
     _toggl = TogglTrack(settings.TOGGL_WORKSPACE_ID,
                         settings.TOGGL_ID,
-                        (not settings.TESTING))
+                        allowSync=(not settings.TESTING))
 
     @staticmethod
     def getProject(id: str) -> dict:
@@ -36,7 +33,7 @@ class TogglService:
         """
         project = TogglService._toggl.createProject(name)
         if settings.TESTING:
-            TogglService._toggl.fake_id(project, random.randint(0, 10000000000))
+            TogglService._toggl.fake_project_id(project, random.randint(0, 10000000000))
         project = [project for project in TogglService._toggl.projects if project.name == name][0]
         return project.id
 
