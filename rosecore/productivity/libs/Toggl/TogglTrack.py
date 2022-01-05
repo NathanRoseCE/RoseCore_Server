@@ -10,7 +10,7 @@ from copy import copy
 import json
 
 from datetime import timedelta
-from pytz import timezone
+import pytz
 
 class TogglTrack:
     """
@@ -115,6 +115,7 @@ class TogglTrack:
         """
         if self._allowSync:
             self._syncProjects()
+            self._sync_time_entries()
 
     def _createRemoteProjects(self) -> None:
         """
@@ -229,27 +230,43 @@ class TogglTrack:
 
     def update_time_entry(self,
                           time_entry: TimeEntry,
-                          name: str = None,
-                          tags: List[str] = None)->None:
+                          description: str = None,
+                          tags: List[str] = None,
+                          start_time: datetime = None,
+                          stop_time: datetime = None,
+                          project_id: int = None)->None:
         """
         Updates a time entry
         """
+        id = time_entry.id
         if time_entry.id in self._time_entries:
-            if name is not None:
-                self._time_entries[id].name = name
-                self._time_entries[id].synced = False
+            self._time_entries[id].synced = False
+            if description is not None:
+                self._time_entries[id].description = description
             if tags is not None:
                 self._time_entries[id].tags = copy(tags)
-                self._time_entries[id].synced = False
+            if start_time is not None:
+                self._time_entries[id].start = start_time
+            if stop_time is not None:
+                self._time_entries[id].stop = stop_time
+            if project_id is not None:
+                self._time_entries[id].project_id = project_id
         elif time_entry.description in [entry.description for entry in self._new_time_entries]:
             index = [entry.description for entry in self._new_time_entries].index(time_entry.description)
             entry = self._new_time_entries[index]
-            if name is not None:
-                entry.description = name
+            entry.synced = False
+            if description is not None:
+                entry.description = description
             if tags is not None:
                 entry.tags = copy(tags)
+            if start_time is not None:
+                entry.start = start_time
+            if stop_time is not None:
+                entry.stop = stop_time
+            if project_id is not None:
+                entry.project_id = project_id
         else:
-            raise ValueError("Time Entry {time_entry.description} is not known")
+            raise ValueError(f"Time Entry {time_entry.id}, {time_entry.description} is not known")
         
     def delete_time_entry(self, time_entry: TimeEntry) -> None:
         """
@@ -281,22 +298,75 @@ class TogglTrack:
         """
         gets all time entries within the delta, if none, uses self._time_delta
         """
+        self._create_new_time_entries()
+        self._update_time_entries()
+        self._delete_time_entries()
+        self._fetch_time_entries(delta, True)
 
+    def _delete_time_entries(self) -> None:
+        """
+        Deletes all time entries that are marked to delete
+        """
+        for id, entry in self._time_entries.items():
+            if entry.to_delete:
+                response = requests.delete(self._time_entries_url + "/" + str(id),
+                                           auth=HTTPBasicAuth(self._api_token, "api_token")
+                                           )
+                self._parseResponse(response)
+        
     def _fetch_time_entries(self, delta: timedelta=None, refresh=True) -> None:
+        """
+        fetches the time entries within the +-time delta
+        if refresh is set it will clear the time entries 
+        """
         if refresh:
             self._time_entries={}
         if delta is None:
             delta = self._time_delta
-        start_time = datetime.now(timezone('EST')) - delta
+        start_time = datetime.now() - delta
         stop_time = datetime.now() + delta
+        start_time = pytz.utc.localize(start_time)
+        stop_time = pytz.utc.localize(stop_time)
         response = requests.get(self._time_entries_url,
                                 auth=HTTPBasicAuth(self._api_token, "api_token"),
                                 params={
-                                    "start_date": start_time.isoformat("#", "seconds"),
-                                    "stop_date": stop_time.isoformat("#", "seconds"),
+                                    "start_date": start_time.isoformat("T", "seconds"),
+                                    "stop_date": stop_time.isoformat("T", "seconds"),
                                 })
         entries_json = self._parseResponse(response)
         for entry_json in entries_json:
             entry = TimeEntry()
             entry.fromJson(entry_json)
+            entry.id = int(entry_json["id"])
             self._time_entries[entry.id] = entry
+
+    def _create_new_time_entries(self, clear_new=True) -> None:
+        """
+        Creates new time entries and then clears
+        """
+        for time_entry in self._new_time_entries:
+            jsonData = json.dumps({
+                "time_entry": time_entry.toJson()
+            })
+            response = requests.post(self._time_entries_url,
+                                    auth=HTTPBasicAuth(self._api_token, "api_token"),
+                                    data=jsonData)
+            self._parseResponse(response)
+        if clear_new:
+            self._new_time_entries = []
+
+    def _update_time_entries(self) -> None:
+        """
+        Update Time entriess time entries
+        """
+        for id, time_entry in self._time_entries.items():
+            if time_entry.synced:
+                continue
+            response = requests.put(self._time_entries_url + "/" + str(id),
+                                    auth=HTTPBasicAuth(self._api_token, "api_token"),
+                                    data=json.dumps({
+                                        "time_entry": time_entry.toJson()
+                                    }))
+            self._parseResponse(response)
+            time_entry.synced = True
+            

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List
 import json
 from dateutil import parser
-
+import pytz
 
 @dataclass
 class TimeEntry:
@@ -22,18 +22,29 @@ class TimeEntry:
         self.start = parser.parse(jsonConfig["start"])
         self.stop = parser.parse(jsonConfig["stop"])
         self.workspace_id = int(jsonConfig["wid"])
-        self.project_id = int(jsonConfig["pid"])
+        if "pid" in jsonConfig:
+            self.project_id = int(jsonConfig["pid"])
+        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
+            self.start = pytz.utc.localize(self.start)
+        if self.stop.tzinfo is None or self.stop.tzinfo.utcoffset(self.stop) is None:
+            self.stop = pytz.utc.localize(self.stop)
         self.tags = jsonConfig["tags"]
 
     def toJson(self):
         returnJson =  {
             "description": self.description,
-            "wid": self.workspace_id,
-            "pid": self.project_id
+            "pid": self.project_id,
+            "created_with": "rosecore"
         }
         if self.start is not None:
-            returnJson["time_entry"]["stop"] = self.start.isoformat()
+            if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
+                self.start = pytz.utc.localize(self.start)
+            returnJson["start"] = self.start.isoformat("T", "milliseconds")
+            returnJson["duration"] = 12
         if self.stop is not None:
-            returnJson["time_entry"]["stop"] = self.stop.isoformat()
+            if self.stop.tzinfo is None or self.stop.tzinfo.utcoffset(self.stop) is None:
+                self.stop = pytz.utc.localize(self.stop)
+            returnJson["stop"] = self.stop.isoformat("T", "milliseconds")
         if self.tags is not None:
-            returnJson["time_entry"]["tags"] = self.tags
+            returnJson["tags"] = self.tags
+        return returnJson
