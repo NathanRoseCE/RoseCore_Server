@@ -57,8 +57,8 @@ class ProjectService:
         )
         if commit:
             project.save()
-        return project
-
+        return project        
+        
     @staticmethod
     def get_root_projects(limit=None):
         """
@@ -189,11 +189,26 @@ class ProjectService:
         present and mark as unsynced with the correct source
         """
         ProjectService._check_for_unsynced_todoist_projects()
+        ProjectService._check_for_unsynced_toggl_projects()
 
     @staticmethod
     def _check_for_unsynced_todoist_projects() -> None:
+        """
+        CHecks for any todoist-only projects
+        """
         for todoist_project in TodoistService.getAllProjects():
             if not todoist_project["id"] in [project.todoistId for project in ProjectService.get_projects()]:
                 ProjectService.createProject(todoist_project["name"],
                                              todoistId=todoist_project["id"],
                                              unsyncedSource="todoist")
+
+    @staticmethod
+    def _check_for_unsynced_toggl_projects() -> None:
+        """
+        Checks for any toggl-only projects
+        """
+        for toggl_project in TogglService.getAllProjects():
+            if not toggl_project["id"] in [project.togglId for project in ProjectService.get_projects()]:
+                ProjectService.createProject(toggl_project["name"],
+                                             togglId=toggl_project["id"],
+                                             unsyncedSource="toggl")

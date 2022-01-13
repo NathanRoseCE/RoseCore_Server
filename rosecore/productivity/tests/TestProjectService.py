@@ -110,3 +110,18 @@ class ProjectServiceSyncTest(TestCase):
         self.assertTrue("todoist" in unsynced_project.unsyncedSource)
         
         
+    def test_unsynced_toggl_project(self):
+        toggl_project_name = "toggl_unsyced"
+        TogglService.createProject(name=toggl_project_name)
+        toggl_project = [project for project in TogglService.getAllProjects()
+                           if project["name"] == toggl_project_name][0]
+        self.assertFalse(toggl_project["name"] in [project.name for project in ProjectService.get_projects()])
+
+        ProjectService.sync()
+        self.assertTrue(toggl_project["name"] in [project.name for project in ProjectService.get_projects()])
+        unsynced_project = [project for project in ProjectService.get_projects()
+                            if project.name == toggl_project_name][0]
+        self.assertFalse(unsynced_project.synced)
+        self.assertTrue("toggl" in unsynced_project.unsyncedSource)
+        
+        

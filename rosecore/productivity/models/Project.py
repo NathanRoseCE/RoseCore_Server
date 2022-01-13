@@ -6,7 +6,7 @@ class Project(models.Model):
     A project is a collection of tasks and time entries under one, user-defined name
     """
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     parent = models.ForeignKey('self', blank=True, null=True, related_name='children',
                                on_delete=models.CASCADE)
     todoistId = models.CharField(max_length=50)
