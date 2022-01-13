@@ -29,7 +29,7 @@ class TogglServiceTest(TestCase):
             testName, project["name"]
         )
 
-        TogglService.deleteProject(id=newId)
+        TogglService.deleteProject(newId)
         self.assertEqual(
             False, newId in [project["id"] for project in TogglService.getAllProjects()]
         )

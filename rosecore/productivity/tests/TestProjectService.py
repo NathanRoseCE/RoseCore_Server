@@ -17,11 +17,11 @@ class ProjectServiceTest(TestCase):
         self.projectOne.delete()
         self.projectTwo.delete()
         for project in self.deleteProjects:
-            if project.todoistId != "":
-                TodoistService.deleteProject(project.todoistId)
-            if project.togglId != "":
-                TogglService.deleteProject(project.togglId)
             try:
+                if project.todoistId != "":
+                    TodoistService.deleteProject(project.todoistId)
+                if project.togglId != "":
+                    TogglService.deleteProject(project.togglId)
                 project.delete()
             except Exception:
                 pass
@@ -67,7 +67,7 @@ class ProjectServiceTest(TestCase):
         project = ProjectService.createProject("Test Project_toggl_id")
         self.deleteProjects.append(project)
         togglProject = TogglService.getProject(id=project.togglId)
-        self.assertEqual(project.togglId, int(togglProject["id"]))
+        self.assertEqual(project.togglId, str(togglProject["id"]))
         self.assertEqual(project.name, togglProject["name"])
 
     def test_delete_project(self):
@@ -80,136 +80,33 @@ class ProjectServiceTest(TestCase):
         self.assertEqual(False, todoistId in [project["id"] for project in TodoistService.getAllProjects()])
         self.assertEqual(False, togglId in [project["id"] for project in TogglService.getAllProjects()])
 
-    def test_noIdMatch(self):
-        todoistProjects = [
-            {
-                "id": "testIdOne",
-                "name": "test_one",
-                "parent_id": None,
-                "archived": False
-            },{
-                "id": "testIdTwo",
-                "name": "test_two_wrong",
-                "parent_id": None,
-                "archived": False
-            },{
-                "id": "testIdThree",
-                "name": "test_three_wrong",
-                "parent_id": None,
-                "archived": False
-            }
-        ]
-        togglProjects = [
-            {
-                "id": "testIdOne",
-                "name": "test_one",
-                "parent_id": None,
-                "archived": False
-            },{
-                "id": "testIdTwo",
-                "name": "test_two_wrong",
-                "parent_id": None,
-                "archived": False
-            },{
-                "id": "testIdThree",
-                "name": "test_three_wrong",
-                "parent_id": None,
-                "archived": False
-            }
-        ]
-        projects = Project.objects.all()
-        results = ProjectService._nonIdMatch(projects, todoistProjects.copy(), togglProjects.copy())
+class ProjectServiceSyncTest(TestCase):
+    def test_ensure_client_projects_present(self):
+        synced_project = ProjectService.createProject("test_synced")
+        test_project = Project(name="test_unsynced")
+        test_project.save()
+        self.assertFalse(test_project.name in [todoist_project["name"]
+                                               for todoist_project in TodoistService.getAllProjects()])
+        self.assertTrue(synced_project.name in [todoist_project["name"]
+                                               for todoist_project in TodoistService.getAllProjects()])
+        ProjectService.sync()
+        self.assertTrue(test_project.name in [todoist_project["name"]
+                                              for todoist_project in TodoistService.getAllProjects()])
+        self.assertTrue(synced_project.name in [todoist_project["name"]
+                                               for todoist_project in TodoistService.getAllProjects()])
 
-        self.assertEqual(todoistProjects[1] in results["todoist"]["update"], True)
-        self.assertEqual(len(results["todoist"]["update"]), 1)
-        self.assertEqual(todoistProjects[2] in results["todoist"]["delete"], True)
-        self.assertEqual(len(results["todoist"]["delete"]), 1)
+    def test_unsynced_todoist_project(self):
+        todoist_project_name = "todoist_unsyced"
+        TodoistService.createProject(name=todoist_project_name)
+        todoist_project = [project for project in TodoistService.getAllProjects()
+                           if project["name"] == todoist_project_name][0]
+        self.assertFalse(todoist_project["name"] in [project.name for project in ProjectService.get_projects()])
 
-        self.assertEqual(todoistProjects[1] in results["toggl"]["update"], True)
-        self.assertEqual(len(results["toggl"]["update"]), 1)
-        self.assertEqual(todoistProjects[2] in results["toggl"]["delete"], True)
-        self.assertEqual(len(results["toggl"]["delete"]), 1)
-
-    def test_nameMatch(self):
-        projects = [
-            Project(
-                name="test name match one",
-                todoistId="123",
-                togglId="342",
-            ),
-            Project(
-                name="test name match two",
-                todoistId="124",
-                togglId="3433",
-             )
-        ]
-        idResults = {
-            "todoist": {
-                "delete": [
-                    {
-                        "name": "test name match one",
-                        "id": "correctTodoistIdOne"
-                    },
-                    {
-                        "name": "deleteThisStill",
-                        "id": "dafdsaljkl"
-                    }
-                ],
-                "update":[]
-            },
-            "toggl": {
-                "delete": [
-                    {
-                        "name": "test name match one",
-                        "id": "correctTogglIdOne"
-                    },
-                    {
-                        "name": "deleteThisStill",
-                        "id": "fljakl;fjds"
-                    }
-                ],
-                "update":[]
-            }
-        }
-        results = ProjectService._parseForNameMatches(projects, idResults)
-        self.assertEqual(
-            projects[0].todoistId, "correctTodoistIdOne"
-        )
-        self.assertEqual(
-            projects[0].togglId, "correctTogglIdOne"
-        )
-        self.assertEqual(
-            "test name match one" in [project["name"] for project in results["todoist"]["update"]],
-            True
-        )
-        self.assertEqual(
-            "test name match one" in [project["name"] for project in results["toggl"]["update"]],
-            True
-        )
-        self.assertEqual(
-            "test name match one" in [project["name"] for project in results["todoist"]["delete"]],
-            False
-        )
-        self.assertEqual(
-            "test name match one" in [project["name"] for project in results["toggl"]["delete"]],
-            False
-        )
-        # ---
-        self.assertEqual(
-            "deleteThisStill" in [project["name"] for project in results["todoist"]["update"]],
-            False
-        )
-        self.assertEqual(
-            "deleteThisStill" in [project["name"] for project in results["todoist"]["delete"]],
-            True
-        )
-        self.assertEqual(
-            "deleteThisStill" in [project["name"] for project in results["toggl"]["update"]],
-            False
-        )
-        self.assertEqual(
-            "deleteThisStill" in [project["name"] for project in results["toggl"]["delete"]],
-            True
-        )
-
-
+        ProjectService.sync()
+        self.assertTrue(todoist_project["name"] in [project.name for project in ProjectService.get_projects()])
+        unsynced_project = [project for project in ProjectService.get_projects()
+                            if project.name == todoist_project_name][0]
+        self.assertFalse(unsynced_project.synced)
+        self.assertTrue("todoist" in unsynced_project.unsyncedSource)
+        
+        

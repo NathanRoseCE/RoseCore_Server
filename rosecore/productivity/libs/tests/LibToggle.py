@@ -13,7 +13,7 @@ import pytz
 
 class LocalTogglProjectTester(TestCase):
     def test_create_project(self):
-        toggl = TogglTrack(-1, -1, False)
+        toggl = TogglTrack(-1, -1, allowSync=False)
         projectName = "test project"
         toggl.createProject(projectName)
         self.assertTrue(
@@ -22,7 +22,7 @@ class LocalTogglProjectTester(TestCase):
         )
     
     def test_delete_project(self):
-        toggl = TogglTrack(-1, -1, False)
+        toggl = TogglTrack(-1, -1, allowSync=False)
         projectName = "test project"
         project = toggl.createProject(projectName)
         self.assertTrue(
@@ -37,7 +37,7 @@ class LocalTogglProjectTester(TestCase):
         )
 
     def test_update_project_name(self):
-        toggl = TogglTrack(-1, -1, False)
+        toggl = TogglTrack(-1, -1, allowSync=False)
         oldProjectName = "old project name"
         newProjectName = "test project"
         project = toggl.createProject(oldProjectName)
@@ -168,8 +168,6 @@ class LocalTogglTimeEntryTester(TestCase):
         self.assertFalse(time_entry.synced)
         for tag in tags:
             self.assertTrue(tag in time_entry.tags)
-
-
 
     def test_update_time_entry_tags(self):
         toggl = TogglTrack(-1, -1, False)

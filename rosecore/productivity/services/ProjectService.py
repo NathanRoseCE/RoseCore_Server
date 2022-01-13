@@ -4,35 +4,56 @@ from .TodoistService import TodoistService
 from .TogglService import TogglService
 from productivity.utilities.exceptions import InvalidProject
 
+
 class ProjectService:
     @staticmethod
     def get_projects(limit=None, **filters):
+        """
+        Gets a large project
+        """
         return Project.objects.all()[:limit]
 
     @staticmethod
     def get_project_or_404(project_id):
+        """
+        Gets a project or throws a 404 exception
+        """
         return get_object_or_404(Project, pk=project_id)
 
     @staticmethod
-    def createProject(name: str, commit=True, **args) -> Project:
-        todoistId = args["todoistId"] if "todoistId" in args else ""
-        togglId = args["togglId"] if "togglId" in args else ""
+    def createProject(name: str, commit: bool=True, **args) -> Project:
+        """
+        Creates a project if the todoistId and/or togglId are present
+        then it will store them else it will create new projects with 
+        the name
+        """
+        project_args = {
+            "name": name
+        }
+        allowedToCreate=True
+        if "unsyncedSource" in args:
+            project_args["unsyncedSource"] = args["unsyncedSource"]
+            allowedToCreate=False
+            
+            
         parent = args["parent"] if "parent" in args else None
-        if todoistId:
-            ProjectService.validateTodoistId(todoistId)
+        if "todoistId" in args:
+            ProjectService.validateTodoistId(args["todoistId"])
+            project_args["todoistId"] = args["todoistId"]
         else:
-            todoistId = TodoistService.createProject(name,
-                                                     parent_id=parent.todoistId if parent is not None else None)
-
-        if togglId:
-            ProjectService.validateTogglId(togglId)
+            if allowedToCreate:
+                todoistId = TodoistService.createProject(name,
+                                                         parent_id=parent.todoistId if parent is not None else None)
+                project_args["todoistId"] = todoistId
+        if "togglId" in args:
+            ProjectService.validateTogglId(args["togglId"])
+            project_args["togglId"] = args["togglId"]
         else:
-            togglId = TogglService.createProject(name)
+            if allowedToCreate:
+                togglId = TogglService.createProject(name)
+                project_args["togglId"] = togglId
         project = Project(
-            name=name,
-            todoistId=todoistId,
-            togglId=togglId,
-            parent=parent
+            **project_args
         )
         if commit:
             project.save()
@@ -40,22 +61,43 @@ class ProjectService:
 
     @staticmethod
     def get_root_projects(limit=None):
-        return Project.objects.all().filter(parent=None)
+        """
+        Gets all projects without parents
+        """
+        return Project.objects.all().filter(parent=None)[:limit]
 
     @staticmethod
-    def updateProject(project: Project)->Project:
+    def updateProject(project: Project)->None:
+        """
+        Updates a project
+        """
         TodoistService.updateProject({"id": project.todoistId, "name": project.name, "parent_id": project.parent.todoistId if project.parent is not None else None})
         TogglService.updateProject({"id": project.togglId, "name": project.name})
         project.save()
 
     @staticmethod
-    def deleteProject(project: Project)->Project:
+    def deleteProject(project: Project)->None:
+        """
+        Delets a project
+        """
         TodoistService.deleteProject(project.todoistId)
         TogglService.deleteProject(project.togglId)
         project.delete()
 
     @staticmethod
+    def markUnsynced(data: dict)->None:
+        """
+        Marks a project as unsyced
+        """
+        project = Project(**data)
+        project.unsynced=True
+        project.save()
+        
+    @staticmethod
     def validateTodoistId(todoistId: str):
+        """
+        ensure the todoist project id is valud
+        """
         if not (todoistId in [project["id"] for project in TodoistService.getAllProjects()]):
             raise InvalidProject(
                 "todoistId", str(todoistId)
@@ -63,6 +105,9 @@ class ProjectService:
 
     @staticmethod
     def validateTogglId(togglId: str):
+        """
+        Ensures the toggl project id is valid
+        """
         if not (togglId in [project["id"] for project in TogglService.getAllProjects()]):
             raise InvalidProject(
                 "togglId", str(togglId)
@@ -70,89 +115,85 @@ class ProjectService:
 
     @staticmethod
     def sync():
+        """
+        syncs all of the projects
+        """
         TodoistService.sync()
-        todoistProjects = TodoistService.getAllProjects()
-        togglProjects = TogglService.getAllProjects()
-        projects = Project.objects.all()
-        unsynced = ProjectService._nonIdMatch(projects, todoistProjects, togglProjects)
-        unsynced = ProjectService._parseForNameMatches(projects, unsynced)
-        [project.save() for project in projects]
-        ProjectService._handleUnsynced(unsynced)
+        TogglService.sync()
+        ProjectService._ensure_client_projects_present()
+        ProjectService._check_for_unsynced_projects()
 
     @staticmethod
-    def _parseForNameMatches(projects, idResults: dict):
-        for project in projects:
-            try:
-                nameMatch = [tProject for tProject in idResults["todoist"]["delete"]
-                             if tProject["name"] == project.name][0]
-                idResults["todoist"]["update"].append(nameMatch)
-                idResults["todoist"]["delete"].remove(nameMatch)
-                project.todoistId=nameMatch["id"]
-            except IndexError:
-                pass
-            try:
-                nameMatch = [tProject for tProject in idResults["toggl"]["delete"]
-                             if tProject["name"] == project.name][0]
-                idResults["toggl"]["update"].append(nameMatch)
-                idResults["toggl"]["delete"].remove(nameMatch)
-                project.togglId=nameMatch["id"]
-            except IndexError:
-                pass
-        return idResults
-    
+    def _ensure_client_projects_present(save: bool=True):
+        """
+        For all projects in the databse that are synced, ensure that
+        the clients(Todoist and Toggl) have projects with the id listed
+        will check for id match, then name match, then create it
+        """
+        for project in Project.objects.all():
+            todoist_id = ProjectService._ensure_project_present_todoist(project)
+            toggl_id = ProjectService._ensure_project_present_toggl(project)
+            project.todoistId = todoist_id
+            project.togglId = toggl_id
+            if save:
+                project.save()
     @staticmethod
-    def _nonIdMatch(projects, todoistProjects: dict, togglProjects: dict) -> dict:
-        todoistCreate = []
-        todoistUpdate = []
-        togglCreate = []
-        togglUpdate = []
-
-        for project in projects:
-            try:
-                match = [todoistProject for todoistProject in todoistProjects
-                         if todoistProject["id"] == project.todoistId][0]
-                todoistProjects.remove(match)
-                if match["name"] != project.name:
-                    match["name"] = project.name
-                    todoistUpdate.append(match)
-            except IndexError:
-                todoistCreate.append(project)
-            try:
-                match = [togglProject for togglProject in togglProjects
-                         if togglProject["id"] == project.togglId][0]
-                togglProjects.remove(match)
-                if match["name"] != project.name:
-                    match["name"] = project.name
-                    togglUpdate.append(match)
-            except IndexError:
-                togglCreate.append(project)
-        return {
-            "todoist": {
-                "create": todoistCreate,
-                "update": todoistUpdate,
-                "delete": todoistProjects
-            },
-            "toggl": {
-                "create": togglCreate,
-                "update": togglUpdate,
-                "delete": togglProjects
+    def _ensure_project_present_todoist(project: Project) -> str:
+        """
+        ensures a specified client project is present in todoist
+        """
+        correctProject = None
+        for todoist_project in TodoistService.getAllProjects():
+            if todoist_project["id"] == project.todoistId:
+                correctProject = todoist_project
+                break
+            elif todoist_project["name"] == project.name:
+                correctProject = todoist_project
+        if correctProject is not None:
+            return correctProject["id"]
+        else:
+            project_args = {
+                "name": project.name
             }
-        }
+            if project.parent is not None:
+                project_args["parent_id"] = project.parent.todoistId
+            todoist_id = TodoistService.createProject(**project_args)
+            return todoist_id
+
 
     @staticmethod
-    def _handleUnsynced(unsynced: dict) -> None:
-        [TodoistService.deleteProject(project["id"])
-         for project in unsynced["todoist"]["delete"]]
-        [TodoistService.update(project)
-         for project in unsynced["todoist"]["update"]]
-        for project in unsynced["todoist"]["create"]:
-            project.todoistId = TodoistService.createProject(project.name)
-            project.save()
+    def _ensure_project_present_toggl(project: Project) -> str:
+        """
+        ensure a given client project is present todoist
+        """
+        correctProject = None
+        for toggl_project in TogglService.getAllProjects():
+            if toggl_project["id"] == project.todoistId:
+                correctProject = toggl_project
+                break
+            elif toggl_project["name"] == project.name:
+                correctProject = toggl_project
+        if correctProject is not None:
+            return correctProject["id"]
+        else:
+            project_args = {
+                "name": project.name
+            }
+            toggl_id = TogglService.createProject(**project_args)
+            return toggl_id
 
-        [TogglService.deleteProject(project["id"])
-         for project in unsynced["toggl"]["delete"]]
-        [TogglService.update(project)
-         for project in unsynced["toggl"]["update"]]
-        for project in unsynced["toggl"]["create"]:
-            project.togglId = TogglService.createProject(project.name)
-            project.save()
+    @staticmethod
+    def _check_for_unsynced_projects() -> None:
+        """
+        ensures that all projects that exist only on todoist/toggl are
+        present and mark as unsynced with the correct source
+        """
+        ProjectService._check_for_unsynced_todoist_projects()
+
+    @staticmethod
+    def _check_for_unsynced_todoist_projects() -> None:
+        for todoist_project in TodoistService.getAllProjects():
+            if not todoist_project["id"] in [project.todoistId for project in ProjectService.get_projects()]:
+                ProjectService.createProject(todoist_project["name"],
+                                             todoistId=todoist_project["id"],
+                                             unsyncedSource="todoist")

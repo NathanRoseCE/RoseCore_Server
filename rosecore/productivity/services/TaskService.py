@@ -19,7 +19,7 @@ class TaskService:
                    description:str="",
                    project:Project=None,
                    priority:int=3,
-                   nextDue:datetime=datetime.today(),
+                   nextDue:datetime.datetime=datetime.datetime.now(),
                    **args) -> Task:
         todoistId = args["todoistId"] if "todoistId" in args else ""
         if todoistId:
@@ -29,9 +29,19 @@ class TaskService:
             pass
         raise NotImplemented()
 
+    @staticmethod
+    def deleteTask(id: str) -> None:
+        raise NotImplemented
+
+    @staticmethod
+    def getTask(id: str) -> Task:
+        raise NotImplemented
+
+    @staticmethod
+    def 
 
     @staticmethod
     def validateTodoistId(todoistId: str) -> None:
-        pass
+        raise NotImplemented
     
         

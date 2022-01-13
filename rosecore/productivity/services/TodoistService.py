@@ -1,6 +1,7 @@
 from django.conf import settings
 from todoist import TodoistAPI
 from typing import Iterable
+from copy import copy
 
 import datetime
 
@@ -10,11 +11,17 @@ class TodoistService:
 
     @staticmethod
     def sync()->None:
+        """
+        Syncs to remote if not testing
+        """
         if not settings.TESTING:
             TodoistService._todoist.sync()
 
     @staticmethod
     def createProject(name: str, parent_id: str = None) -> str:
+        """
+        Creates a new project
+        """
         if parent_id is None:
             project = TodoistService._todoist.projects.add(name)
         else:
@@ -24,18 +31,27 @@ class TodoistService:
 
     @staticmethod
     def deleteProject(id: str) -> None:
+        """
+        Deletes a project
+        """
         project = TodoistService._todoist.projects.get_by_id(int(id))
         project.delete()
         TodoistService._todoist.commit()
 
     @staticmethod
     def getProject(id: str) -> dict:
+        """
+        Gets a project in an id
+        """
         TodoistService.sync()
         project = TodoistService._todoist.projects.get_by_id(int(id))
         return TodoistService._formatProjectExport(project)
 
     @staticmethod
     def updateProject(data: dict) -> None:
+        """
+        Updates project
+        """
         project = TodoistService._todoist.projects.get_by_id(int(data["id"]))
         if data["parent_id"] is not None:
             project.move(parent_id=int(data["parent_id"]))
@@ -44,10 +60,24 @@ class TodoistService:
 
     @staticmethod
     def getAllProjects()->Iterable[dict]:
+        """
+        Gets all project detail
+        """
         TodoistService.sync()
         return [
             TodoistService._formatProjectExport(project) for project in TodoistService._todoist.state["projects"]
         ]
+
+    @staticmethod
+    def getProjectWithNameOrCreate(name: str)->str:
+        """
+        gets a project with a specific name or creates the project
+        returns the id of the project as a string
+        """
+        for project in TodoistService.getAllProjects():
+            if project["name"] == name:
+                return project["id"]
+        return TodoistService.createProject(name)
 
     @staticmethod
     def createTask(content:str,
@@ -70,19 +100,49 @@ class TodoistService:
         return TodoistService._formatTaskExport(task)["id"]
 
     @staticmethod
-    def deleteProject(id: str) -> None:
+    def deleteTask(id: str) -> None:
+        """
+        deletes a task from Todosit
+        """
+        task = TodoistService._todoist.items.get_by_id(int(id))
+        task.delete()
+        TodoistService.sync()
+
+    @staticmethod
+    def getTask(id: str) -> dict:
+        """
+        gets a task
+        """
+        TodoistService.sync()
+        task = TodoistService._todoist.items.get_by_id(int(id))
+        return TodoistService._formatTaskExport(task)
+
+    @staticmethod
+    def updateTask(data: dict) -> None:
+        """
+        Updates a task for a given id, data is handed to todoist.sync api
+        """
+        data = copy(data)
+        task = TodoistService._todoist.items.get_by_id(int(data["id"]))
+        del data["id"]
+        task.update(data)
+        TodoistService.sync()
         raise NotImplemented
 
     @staticmethod
-    def getProject(id: str) -> dict:
-        raise NotImplemented
-
-    @staticmethod
-    def updateProject(data: dict) -> None:
-        raise NotImplemented
+    def completeTask(id: str) -> None:
+        """
+        Marks a task as completed
+        """
+        task = TodoistService._todoist.items.get_by_id(int(id))
+        task.complete()
+        TodoistService.sync()
     
     @staticmethod
     def _formatProjectExport(project) -> dict:
+        """
+        Formats the project export
+        """
         return {
             "id": str(project.data["id"]) if project.data["id"] is not None else None,
             "name": str(project.data["name"]),
@@ -92,6 +152,9 @@ class TodoistService:
 
     @staticmethod
     def _formatTaskExport(task) -> dict:
+        """
+        Formats the task export 
+        """
         return {
             "id": str(task.data["id"]) if task.data["id"] is not None else None,
             "content": str(task.data["content"]),

@@ -93,6 +93,17 @@ class TogglTrack:
         else:
             raise ValueError(f"Project:{project.name} is not a known project")
 
+    def getProjectWithNameOrCreate(self, name: str) -> Project:
+        """
+        gets a project with the specified name or creates a new project,
+        unsynced projects will have an id of -1
+        """
+        self.sync(projectOnly=True)
+        for project in self.projects:
+            if project.name == name:
+                return project
+        return self.createProject(name=name)
+
     def _getProjects(self, refresh: bool=True) -> None:
         """
         Gets all projects from external URL, does not check allowSync
@@ -109,13 +120,18 @@ class TogglTrack:
                 project.synced=True
                 self._projects[project.id] = project
         
-    def sync(self) -> None:
+    def sync(self, projectOnly: bool=False, timeEntriesOnly: bool=False) -> None:
         """
         syncs up local and remote toggl instances, if allowSync is true
         """
         if self._allowSync:
-            self._syncProjects()
-            self._sync_time_entries()
+            if projectOnly:
+                self._syncProjects()
+            elif timeEntriesOnly:
+                self._sync_time_entries()
+            else:
+                self._syncProjects()
+                self._sync_time_entries()
 
     def _createRemoteProjects(self) -> None:
         """
@@ -369,4 +385,3 @@ class TogglTrack:
                                     }))
             self._parseResponse(response)
             time_entry.synced = True
-            
