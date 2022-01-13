@@ -6,6 +6,8 @@ from productivity.utilities.exceptions import InvalidProject
 
 
 class ProjectService:
+    TODOIST_UNSYNC_SOURCE = "todoist"
+    TOGGL_UNSYNC_SOURCE = "toggl"
     @staticmethod
     def get_projects(limit=None, **filters):
         """
@@ -58,6 +60,22 @@ class ProjectService:
         if commit:
             project.save()
         return project        
+
+    #TODO come up with better name
+    @staticmethod
+    def sync_project(project: Project) -> None:
+        """
+        syncs a project and ensures that the project exists everywhere
+        """
+        if not ProjectService.TODOIST_UNSYNC_SOURCE in project.unsyncedSource:
+            todoist_id = TodoistService.createProject(project.name)
+            project.todoistId = todoist_id
+        if not ProjectService.TOGGL_UNSYNC_SOURCE in project.unsyncedSource:
+            toggl_id = TogglService.createProject(project.name)
+            project.togglId = toggl_id
+        project.unsyncedSource=""
+        project.save()
+            
         
     @staticmethod
     def get_root_projects(limit=None):
@@ -80,8 +98,10 @@ class ProjectService:
         """
         Delets a project
         """
-        TodoistService.deleteProject(project.todoistId)
-        TogglService.deleteProject(project.togglId)
+        if project.todoistId is not None:
+            TodoistService.deleteProject(project.todoistId)
+        if project.togglId is not None:
+            TogglService.deleteProject(project.togglId)
         project.delete()
 
     @staticmethod
@@ -122,6 +142,28 @@ class ProjectService:
         TogglService.sync()
         ProjectService._ensure_client_projects_present()
         ProjectService._check_for_unsynced_projects()
+
+    @staticmethod
+    def merge_synced_and_unsynced(synced_project: Project, unsynced_project: Project) -> None:
+        """
+        merges a synced and unsynced project, the unsynced project is deleted and should be dropped
+        """
+        if (unsynced_project.todoistId is None) or (unsynced_project.todoistId == ""):
+            args = {
+                "name": synced_project.name
+            }
+            if synced_project.parent_id is not None:
+                args["parent_id"] = synced_project.parent.todoistId
+            synced_project.todoistId = TodoistService.createProject(**args)
+        else:
+            synced_project.todoistId = unsynced_project.todoistId
+
+        if (unsynced_project.togglId is not None) or (unsynced_project.togglId == ""):
+            synced_project.togglId = TogglService.createProject(name=synced_project.name)
+        else:
+            synced_project.togglId = unsynced_project.togglId
+        synced_project.save()
+        unsynced_project.delete()
 
     @staticmethod
     def _ensure_client_projects_present(save: bool=True):
@@ -200,7 +242,7 @@ class ProjectService:
             if not todoist_project["id"] in [project.todoistId for project in ProjectService.get_projects()]:
                 ProjectService.createProject(todoist_project["name"],
                                              todoistId=todoist_project["id"],
-                                             unsyncedSource="todoist")
+                                             unsyncedSource=ProjectService.TODOIST_UNSYNC_SOURCE)
 
     @staticmethod
     def _check_for_unsynced_toggl_projects() -> None:
@@ -211,4 +253,4 @@ class ProjectService:
             if not toggl_project["id"] in [project.togglId for project in ProjectService.get_projects()]:
                 ProjectService.createProject(toggl_project["name"],
                                              togglId=toggl_project["id"],
-                                             unsyncedSource="toggl")
+                                             unsyncedSource=ProjectService.TOGGL_UNSYNC_SOURCE)

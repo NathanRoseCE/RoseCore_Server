@@ -124,4 +124,43 @@ class ProjectServiceSyncTest(TestCase):
         self.assertFalse(unsynced_project.synced)
         self.assertTrue("toggl" in unsynced_project.unsyncedSource)
         
+    def test_sync_project_todoist_source(self):
+        todoist_project_name = "todoist_unsyced_sync"
+        TodoistService.createProject(name=todoist_project_name)
+        ProjectService.sync()
+        todoist_unsynced = [project for project in ProjectService.get_projects()
+                           if project.name == todoist_project_name][0]
+        self.assertFalse(todoist_unsynced.synced)
+        self.assertFalse(todoist_project_name in [project["name"] for project in TogglService.getAllProjects()])
+
+        ProjectService.sync_project(todoist_unsynced)
+
+        self.assertTrue(todoist_unsynced.synced)
+        self.assertTrue(todoist_project_name in [project["name"] for project in TogglService.getAllProjects()])        
+    def test_sync_project_toggl_source(self):
+        toggl_project_name = "toggl_unsyced_sync"
+        TogglService.createProject(name=toggl_project_name)
+        ProjectService.sync()
+        toggl_unsynced = [project for project in ProjectService.get_projects()
+                           if project.name == toggl_project_name][0]
+        self.assertFalse(toggl_unsynced.synced)
+        self.assertFalse(toggl_project_name in [project["name"] for project in TodoistService.getAllProjects()])
+
+        ProjectService.sync_project(toggl_unsynced)
+
+        self.assertTrue(toggl_unsynced.synced)
+        self.assertTrue(toggl_project_name in [project["name"] for project in TodoistService.getAllProjects()])
+
+    def test_merge_todoist_project(self):
+        project_parent = Project(name="Test Parent")
+        project_parent.save()
+        project_merged = Project(name="Test Child", parent=project_parent)
+        project_merged.save()
+        todoist_id = TodoistService.createProject(name="Todoist Project")
+        ProjectService.sync()
+        todoist_project = [project for project in ProjectService.get_projects() if project.todoistId == todoist_id][0]
+        ProjectService.merge_synced_and_unsynced(project_merged, todoist_project)
         
+        self.assertEqual(project_merged.name, "Test Child")
+        self.assertEqual(project_merged.todoistId, str(todoist_id))
+        self.assertEqual(project_parent, project_merged.parent)
