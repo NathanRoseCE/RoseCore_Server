@@ -29,6 +29,7 @@ def projectInfo(request, project_id):
     else:
         returnData = {
             'project_id': project_id,
+            'project': project,
             'form': ProjectForm(instance=project)
         }
     return render(request, 'project/projectInfo.html', returnData)

@@ -1,4 +1,7 @@
 <li><a href="{% url 'productivity:project_info' project.id %}">{{ project.name }}</a>
+  {% if not project.synced %}
+  Unsynced, source: {{ project.unsyncedSource }}
+  {% endif %}
 {% if project.children.all %}
 <ul>
   {% for child in project.children.all %}
