@@ -13,12 +13,11 @@
     {% if not project.synced %}
     <p>
       This project is not synced
-      Force Sync, merge, delete
+      <a href="{% url 'productivity:auto_sync' project_id=project_id%}">Autosync</a>,
+      <a href="{% url 'productivity:validate' project_id=project_id%}">Validate</a>,
+      <a href="{% url 'productivity:delete_project' project_id=project_id%}">Delete</a>,
     </p>
     {% endif %}
-    <p>
-      <a href="{% url 'productivity:delete_project' project_id=project_id%}">Delete {{ project.name }}</a>
-    </p>
     <p>
       <a href="{% url 'productivity:index' %}">View all Projects</a>
     </p>

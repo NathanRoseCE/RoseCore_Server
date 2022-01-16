@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from .TodoistService import TodoistService
 from .TogglService import TogglService
 from productivity.utilities.exceptions import InvalidProject
+import logging
 
 
 class ProjectService:
@@ -14,6 +15,13 @@ class ProjectService:
         Gets a large project
         """
         return Project.objects.all()[:limit]
+
+    @staticmethod
+    def synced_queryset(*args, **kwargs):
+        synced_ids = [project.id for project in Project.objects.all()
+                      if project.synced]
+        return Project.objects.filter(id__in=synced_ids)
+        
 
     @staticmethod
     def get_project_or_404(project_id):
@@ -61,9 +69,8 @@ class ProjectService:
             project.save()
         return project        
 
-    #TODO come up with better name
     @staticmethod
-    def sync_project(project: Project) -> None:
+    def validate_project(project: Project) -> None:
         """
         syncs a project and ensures that the project exists everywhere
         """
@@ -75,6 +82,7 @@ class ProjectService:
             project.togglId = toggl_id
         project.unsyncedSource=""
         project.save()
+        logging.info(f"validated project: {project.id}")
             
         
     @staticmethod
@@ -98,9 +106,9 @@ class ProjectService:
         """
         Delets a project
         """
-        if project.todoistId is not None:
+        if (project.todoistId is not None) and (project.todoistId != ""):
             TodoistService.deleteProject(project.todoistId)
-        if project.togglId is not None:
+        if (project.togglId is not None) and (project.togglId != ""):
             TogglService.deleteProject(project.togglId)
         project.delete()
 

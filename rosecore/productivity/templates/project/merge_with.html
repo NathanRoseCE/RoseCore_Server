@@ -5,20 +5,11 @@
   </head>
   <body>
     {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
-    <form action="{% url 'productivity:project_info' project_id=project_id %}" method="post">
+    <form action="{% url 'productivity:auto_sync' project_id=project_id %}" method="post">
       {% csrf_token %}
       {{ form.as_p }}
       <input type="submit" value="Submit">
     </form>
-    {% if not project.synced %}
-    <p>
-      This project is not synced
-      Force Sync, merge, delete
-    </p>
-    {% endif %}
-    <p>
-      <a href="{% url 'productivity:delete_project' project_id=project_id%}">Delete {{ project.name }}</a>
-    </p>
     <p>
       <a href="{% url 'productivity:index' %}">View all Projects</a>
     </p>
