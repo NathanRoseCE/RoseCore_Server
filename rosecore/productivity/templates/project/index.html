@@ -6,8 +6,9 @@
     <link rel="stylesheet" href="{% static '/css/style.css' %}">
   </head>
   <body>
+    {% include "rosecore/topnav.html" with project=child %}
     {% if project_list %}
-    <p> Here All all of the projects </p>
+    <h1> RoseCore Projects </h1>
       {% for project in project_list %}
       {%include "project/projectTree.html" with project=project%}
       {% endfor %}

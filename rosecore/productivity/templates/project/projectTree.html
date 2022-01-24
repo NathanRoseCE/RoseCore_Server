@@ -1,5 +1,8 @@
-
-<button class="project_button" onclick="window.location.href='{% url 'productivity:project_info' project.id %}';">
+{% if project.synced %}
+<button class="project_button project_synced" onclick="window.location.href='{% url 'productivity:project_info' project.id %}';">
+  {% else %}
+  <button class="project_button project_unsynced" onclick="window.location.href='{% url 'productivity:project_info' project.id %}';">
+  {% endif %}
   <span class="project_button_name">{{ project.name}}</span>
   {% if not project.synced %}
   <span class="project_button_info">
