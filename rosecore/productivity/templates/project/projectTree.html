@@ -1,7 +1,12 @@
-<li><a href="{% url 'productivity:project_info' project.id %}">{{ project.name }}</a>
+
+<button class="project_button" onclick="window.location.href='{% url 'productivity:project_info' project.id %}';">
+  <span class="project_button_name">{{ project.name}}</span>
   {% if not project.synced %}
-  Unsynced, source: {{ project.unsyncedSource }}
+  <span class="project_button_info">
+    Unsynced, source: {{ project.unsyncedSource }}
+  </span>
   {% endif %}
+    
 {% if project.children.all %}
 <ul>
   {% for child in project.children.all %}
@@ -9,4 +14,3 @@
   {% endfor %}
 </ul>
 {% endif %}
-</li>

@@ -1,21 +1,28 @@
+{% load static %}
 <html>
   <head>
     <meta charset="utf-8">
     <title>Rosecore Projects</title>
+    <link rel="stylesheet" href="{% static '/css/style.css' %}">
   </head>
   <body>
     {% if project_list %}
     <p> Here All all of the projects </p>
-    <p> Want to <a href="{% url 'productivity:sync' %}"> Sync?</a></p>
-    <ul>
       {% for project in project_list %}
       {%include "project/projectTree.html" with project=project%}
       {% endfor %}
-    </ul>
     {% else %}
     <p> Its empty here, want to create a project? </p>
     <p> Or you can try to <a href="{% url 'productivity:sync' %}"> Sync!</a></p>
     {% endif %}
-    <a href="{% url 'productivity:create_project' %}">Create a new Project</a>
+    
+    <div class="project_actions"> 
+      <button class="project_action" onclick="window.location.href='{% url 'productivity:create_project' %}';">
+	Create project
+      </button>
+      <button class="project_action" onclick="window.location.href='{% url 'productivity:sync' %}';">
+	Sync Projects
+      </button>
+    </div>
   </body>
 </html>
