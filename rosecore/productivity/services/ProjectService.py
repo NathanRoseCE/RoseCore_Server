@@ -108,6 +108,13 @@ class ProjectService:
         """
         if (project.todoistId is not None) and (project.todoistId != ""):
             TodoistService.deleteProject(project.todoistId)
+        else:
+            # check for another project
+            projects = [project for project in TodoistService.getAllProjects()]
+            if project.name in [project["name"] for project in projects]:
+                TodoistService.deleteProject(
+                    [tproject for tproject in projects if project.name == tproject["name"]][0]["id"]
+                )   
         if (project.togglId is not None) and (project.togglId != ""):
             TogglService.deleteProject(project.togglId)
         project.delete()

@@ -8,6 +8,7 @@ class Task(models.Model):
     priority = models.IntegerField()
     todoistId = models.CharField(max_length=50)
     next_due=models.DateTimeField()
+    complete=models.BooleanField(blank=False, default=False)
 
     def __str__(self):
         return f"{self.content}({self.due}) - {self.next_due}"

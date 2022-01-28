@@ -6,92 +6,101 @@ from productivity.services.TodoistService import TodoistService
 
 class TodoistServiceTest(TestCase):
     def setUp(self):
-        self.api = TodoistAPI(settings.TODOIST_KEY)
-        for project in self.api.state['projects']:
-            project.delete()
-        self.api.commit()
+        print("setup")
+        [TodoistService.deleteTask(task["id"]) for task in TodoistService.getAllTasks()]
+        print([task["content"] for task in TodoistService.getAllTasks()])
 
     def tearDown(self):
-        self.api.sync()
-        for project in self.api.state['projects']:
-            project.delete()
-        self.api.commit()
+        print("tear down")
+        [TodoistService.deleteTask(task["id"]) for task in TodoistService.getAllTasks()]
+        print([task["content"] for task in TodoistService.getAllTasks()])
 
-    def test_create_project(self):
+    def test_CRUD_project(self):
         name = "testName"
         someId = TodoistService.createProject(name=name)
-        self.api.sync()
         self.assertEqual(
-            name in [project.data["name"] for project in self.api.state['projects']],
+            name in [project["name"] for project in TodoistService.getAllProjects()],
             True
         )
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
+        matchingProject = [project for project in TodoistService.getAllProjects() if project["name"] == name][0]
 
         self.assertEqual(
-            str(matchingProject.data["id"]),
+            str(matchingProject["id"]),
             someId
         )
-
-    def test_update_project(self):
-        name = "testName"
-        someId = TodoistService.createProject(name=name)
-        self.api.sync()
-        self.assertEqual(
-            name in [project.data["name"] for project in self.api.state['projects']],
-            True
-        )
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
-        self.assertEqual(
-            str(matchingProject.data["id"]),
-            someId
-        )
-        name = "testNameTwo"
-        matchingProject["name"] = name
+        
+        new_name = "testNameTwo"
+        matchingProject["name"] = new_name
         TodoistService.updateProject(data=matchingProject)
-        matchingProject = [project for project in self.api.state['projects'] if project.data["name"] == name][0]
         self.assertEqual(
-            str(matchingProject.data["id"]),
+            new_name in [project["name"] for project in TodoistService.getAllProjects()],
+            True
+        )
+        matchingProject = [
+            project for project in TodoistService.getAllProjects() if project["name"] == new_name
+        ][0]
+        self.assertEqual(
+            str(matchingProject["id"]),
             someId
         )
-
-    def test_delete_project(self):
-        project = self.api.projects.add("test")
-        self.api.commit()
-        TodoistService.deleteProject(id=project.data["id"])
-        self.api.sync()
+        
+        TodoistService.deleteProject(id=matchingProject["id"])
         self.assertEqual(
-            self.api.projects.get_by_id(project.data["id"]),
-            None
+            new_name not in [project["name"] for project in TodoistService.getAllProjects()],
+            True
         )
 
-    def test_get_project_by_id(self):
-        correct = self.api.projects.add("test")
-        self.api.commit()
-        actual = TodoistService.getProject(correct.data["id"])
-        self.assertEqual(str(correct.data["id"]), actual["id"])
-        self.assertEqual(correct.data["name"], actual["name"])
-        self.assertEqual(correct.data["parent_id"], actual["parent_id"])
-        self.assertEqual(correct.data["is_archived"] == 1, actual["archived"])
+    def test_CRUD_task(self):
+        content = "test content"
+        due_string="today"
+        pid = TodoistService.createProject("test_project")
+        task_id = TodoistService.createTask(
+            content=content,
+            due_string=due_string,
+            project_id=pid
+        )
+        print("pre-test: ")
+        print([task["content"] for task in TodoistService.getAllTasks()])
+        self.assertEqual(
+            content in [task["content"] for task in TodoistService.getAllTasks()],
+            True
+        )
+        matchingTask = [
+            task for task in TodoistService.getAllTasks() if task["content"] == content
+        ][0]
 
-    # def test_get_projects(self):
-    #     self.api.projects.add("testOne")
-    #     self.api.projects.add("testTwo")
-    #     self.api.commit()
-    #     self.api.sync()
-    #     TodoistService.sync()
-    #     for local in self.api.state["projects"]:
-    #         self.assertTrue(
-    #             str(local.data["id"]) in 
-    #             [str(remote["id"]) for remote in TodoistService.getAllProjects()]
-    #         )
-    #         match = [project for project in TodoistService.getAllProjects() if str(local.data["id"]) == project["id"]][0]
-    #         self.assertEqual(
-    #             local.data["name"], match["name"]
-    #         )
-    #         parent_id = str(local.data["parent_id"]) if local.data["parent_id"] is not None else None
-    #         self.assertEqual(
-    #             parent_id, match["parent_id"]
-    #         )
-    #         self.assertEqual(
-    #             local.data["is_archived"] == 1, match["archived"]
-    #         )
+        self.assertEqual(
+            str(matchingTask["id"]),
+            task_id
+        )
+        self.assertEqual(
+            matchingTask["project_id"],
+            pid
+        )
+
+        new_content = "test update"
+        new_description = "test description"
+        TodoistService.updateTask({
+            "content": new_content,
+            "description": new_description
+        })
+        self.assertTrue(
+            new_content in [task["content"] for task in TodoistService.getAllTasks()]
+        )
+        self.assertEqual(
+            matchingTask["project_id"],
+            pid
+        )
+        matchingTask = [
+            task for task in TodoistService.getAllTasks() if task["content"] == content
+        ][0]
+        self.assertEqual(matchingTask["content"], new_content)
+        self.assertEqual(matchingTask["description"], new_description)
+        self.assertEqual(matchingTask["project_id"], pid)
+        self.assertEqual(matchingTask["id"], task_id)
+
+        TodoistService.deleteTask(task_id)
+        self.assertFalse(
+            new_content in [task["content"] for task in TodoistService.getAllTasks()]
+        )
+        
