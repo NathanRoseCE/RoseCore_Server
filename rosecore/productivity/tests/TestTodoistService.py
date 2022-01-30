@@ -2,18 +2,14 @@ from todoist.api import TodoistAPI
 from django.test import TestCase
 from django.conf import settings
 from productivity.services.TodoistService import TodoistService
-
+import unittest
 
 class TodoistServiceTest(TestCase):
     def setUp(self):
-        print("setup")
         [TodoistService.deleteTask(task["id"]) for task in TodoistService.getAllTasks()]
-        print([task["content"] for task in TodoistService.getAllTasks()])
 
     def tearDown(self):
-        print("tear down")
         [TodoistService.deleteTask(task["id"]) for task in TodoistService.getAllTasks()]
-        print([task["content"] for task in TodoistService.getAllTasks()])
 
     def test_CRUD_project(self):
         name = "testName"
@@ -43,13 +39,12 @@ class TodoistServiceTest(TestCase):
             str(matchingProject["id"]),
             someId
         )
-        
         TodoistService.deleteProject(id=matchingProject["id"])
-        self.assertEqual(
+        self.assertTrue(
             new_name not in [project["name"] for project in TodoistService.getAllProjects()],
-            True
         )
 
+    @unittest.skip("Bug in todoist api, bug reported")
     def test_CRUD_task(self):
         content = "test content"
         due_string="today"
@@ -59,8 +54,6 @@ class TodoistServiceTest(TestCase):
             due_string=due_string,
             project_id=pid
         )
-        print("pre-test: ")
-        print([task["content"] for task in TodoistService.getAllTasks()])
         self.assertEqual(
             content in [task["content"] for task in TodoistService.getAllTasks()],
             True

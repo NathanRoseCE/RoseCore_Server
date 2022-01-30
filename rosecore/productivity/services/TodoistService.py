@@ -43,6 +43,11 @@ class TodoistService:
         """
         project = TodoistService._todoist.projects.get_by_id(TodoistService.format_id(id))
         project.delete()
+        f_id = TodoistService.format_id(id)
+        if isinstance(f_id, str):
+            match_project = [project for project in TodoistService._todoist.state["projects"]
+                             if project.temp_id == id][0]
+            TodoistService._todoist.state["projects"].remove(match_project)
         TodoistService.commit()
 
     @staticmethod
@@ -107,6 +112,10 @@ class TodoistService:
         """
         Creates a task and returns the new id
         """
+        # print()
+        # print(f"project id: {TodoistService.format_id(project_id)}")
+        # print(f'known projects: {[project["id"] for project in TodoistService.getAllProjects()]}')
+        # print(f'matches: {[(TodoistService.format_id(project_id) ==project["id"]) for project in TodoistService.getAllProjects()]}')
         task = TodoistService._todoist.add_item(content=content,
                                                 description=description,
                                                 project_id=TodoistService.format_id(project_id),
@@ -114,7 +123,7 @@ class TodoistService:
                                                 due_string=due_string,
                                                 **args)
         if "error" in task:
-            print(json.dumps(task))
+            print(json.dumps(task, indent=2))
             raise ValueError(task)
         TodoistService.commit()
         return TodoistService._formatTaskExport(task)["id"]
@@ -126,7 +135,7 @@ class TodoistService:
         """
         task = TodoistService._todoist.items.get_by_id(TodoistService.format_id(id))
         task.delete()
-        TodoistService.sync()
+        TodoistService.commit()
 
     @staticmethod
     def getTask(id: str) -> dict:
@@ -178,7 +187,6 @@ class TodoistService:
         """
         Formats the task export 
         """
-        print(json.dumps(task,indent=2))
         return {
             "id": str(task["id"]) if task["id"] is not None else None,
             "content": str(task["content"]),
