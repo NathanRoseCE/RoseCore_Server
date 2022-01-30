@@ -34,6 +34,15 @@
       </button>
     </div>
     {% endif %}
+    <h2>tasks</h2>
+    <ul>
+      {% for task in tasks %}
+      <li>task.content</li>
+      {% endfor %}
+      <button class="project_action sync_action" onclick="window.location.href='{% url 'productivity:create_task' %}';">
+	Create Task
+      </button>
+    </ul>
   </body>
 <html>
   

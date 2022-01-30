@@ -11,5 +11,5 @@ class Task(models.Model):
     complete=models.BooleanField(blank=False, default=False)
 
     def __str__(self):
-        return f"{self.content}({self.due}) - {self.next_due}"
+        return f"{self.content}({self.project.name}) - {self.next_due}"
     

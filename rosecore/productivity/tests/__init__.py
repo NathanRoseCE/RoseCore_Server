@@ -4,5 +4,6 @@ from .TestTodoistService import *
 from .TestProjectService import *
 from .TestProjectIndexView import *
 from .TestDetailedProjectView import *
+from .TestTaskService import *
 from  productivity.libs.tests import *
 

@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db.models.query_utils import DeferredAttribute
 from todoist import TodoistAPI
 from typing import Iterable
 from copy import copy
@@ -21,7 +22,7 @@ class TodoistService:
         commits
         """
         if not settings.TESTING:
-            TodoistService.commit()
+            TodoistService._todoist.commit()
 
     @staticmethod
     def createProject(name: str, parent_id: str = None) -> str:
@@ -123,6 +124,9 @@ class TodoistService:
                                                 due_string=due_string,
                                                 **args)
         if "error" in task:
+            print(f"content: {content}")
+            print(f"description: {description}")
+            print(f"project_id: {project_id}")
             print(json.dumps(task, indent=2))
             raise ValueError(task)
         TodoistService.commit()
@@ -199,9 +203,16 @@ class TodoistService:
 
     @staticmethod
     def format_id(id: str):
-        return_id = id
-        try:
-            return_id=int(id)
-        except ValueError:
-            pass
-        return return_id
+        if isinstance(id, int):
+            return id
+        elif isinstance(id, str):
+            try:
+                return_id = int(id)
+            except ValueError:
+                return_id = id
+            return return_id
+        elif isinstance(id, DeferredAttribute):
+            print(dir(id))
+            print(f"tmpid: {dir(tmp_id['field'])}")
+            print(f"tmpid2: {id.first()}")
+            return TodoistService.format_id(id.data["id"])

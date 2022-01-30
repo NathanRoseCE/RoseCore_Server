@@ -1,0 +1,33 @@
+{% load static %}
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ task.name }}</title>
+    <link rel="stylesheet" href="{% static '/css/style.css' %}">
+  </head>
+  <body>
+    {% include "rosecore/topnav.html" with task=child %}
+    {% if task.synced %}
+    <h1>{{ task.name }}</h1>
+    <div>
+      Todosit ID: {{ task.todoistId }} -- Toggl ID: {{ task.togglId }}
+    </div>
+    {% else %}
+    <h1>{{ task.name }}: unsynced({{ task.unsyncedSource }})</h1>
+    {% endif %}
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <form action="{% url 'productivity:task_info' task_id=task_id %}" method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="submit" value="Submit">
+    </form>
+    {% if not task.synced %}
+    <div class="task_actions">
+      <button class="task_action sync_action" onclick="window.location.href='{% url 'productivity:delete_task' task_id=task_id %}';">
+	Delete Task
+      </button>
+    </div>
+    {% endif %}
+  </body>
+<html>
+  

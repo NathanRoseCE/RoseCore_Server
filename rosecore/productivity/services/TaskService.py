@@ -3,12 +3,16 @@ from productivity.models.Project import Project
 from django.shortcuts import get_object_or_404
 import datetime
 
-from rosecore.productivity.services.TodoistService import TodoistService
+from productivity.services.TodoistService import TodoistService
 
 class TaskService:
     @staticmethod
     def get_tasks(limit=None):
         return Task.objects.all()[:limit]
+
+    @staticmethod
+    def get_tasks_from_project(project: Project, limit: int=None):
+        return Task.objects.filter(project__name__contains=project.name)[:limit]
 
     @staticmethod
     def get_task_or_404(task_id):
@@ -20,17 +24,17 @@ class TaskService:
                    project:Project=None,
                    priority:int=3,
                    nextDue:datetime.datetime=datetime.datetime.now(),
-                   commit: bool=False,
+                   commit: bool=True,
                    **args) -> Task:
         todoistId = args["todoistId"] if "todoistId" in args else ""
         if todoistId:
             TaskService.validateTodoistId(todoistId)
         else:
             todoistId = TodoistService.createTask(content=content,
-                                                     description=description,
-                                                     project_id=Project.todoistId,
-                                                     priority=priority,
-                                                     due_string=nextDue.strftime('%m/%d/%Y'))
+                                                  description=description,
+                                                  project_id=project.todoistId,
+                                                  priority=priority,
+                                                  due_string=nextDue.strftime('%m/%d/%Y'))
         task = Task(
             content=content,
             description=description,
@@ -49,11 +53,11 @@ class TaskService:
         Deletes a task, object is no longer valid after being passed
         """
         if (task.todoistId is not None) and (task.todoistId != ""):
-            TodoistService.deleteTask(task.todoistId)
+            TodoistService.deleteTask(str(task.todoistId))
         task.delete()
 
     @staticmethod
-    def getTask(id: str) -> Task:
+    def getTask(id) -> Task:
         """
         gets a task by id, uses get_task_or_404 as implimentation
         """
@@ -79,7 +83,7 @@ class TaskService:
         """
         task.complete = True
         task.save()
-        TodoistService.completeTask(task.todoistId)
+        TodoistService.completeTask(str(task.todoistId))
     
     @staticmethod
     def validateTodoistId(todoistId: str) -> bool:
