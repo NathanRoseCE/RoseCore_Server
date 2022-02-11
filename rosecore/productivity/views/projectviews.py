@@ -4,6 +4,7 @@ from django.urls import reverse
 from productivity.forms.ProjectForm import ProjectForm
 from productivity.forms.ProjectMergeForm import ProjectAutoMergeForm
 from productivity.services import ProjectService
+from productivity.services import TaskService
 
 
 def index(request):
@@ -30,6 +31,7 @@ def projectInfo(request, project_id):
         returnData = {
             'project_id': project_id,
             'project': project,
+            'tasks': TaskService.get_tasks_from_project(project),
             'form': ProjectForm(instance=project)
         }
     return render(request, 'project/projectInfo.html', returnData)
@@ -96,4 +98,8 @@ def validateProject(request, project_id):
 
 def sync(request):
     ProjectService.sync()
+    return HttpResponseRedirect(reverse('productivity:index'))
+
+def nuke_unsynced(request):
+    ProjectService.nuke_all_unsynced()
     return HttpResponseRedirect(reverse('productivity:index'))

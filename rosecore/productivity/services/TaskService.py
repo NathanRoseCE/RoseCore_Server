@@ -12,7 +12,8 @@ class TaskService:
 
     @staticmethod
     def get_tasks_from_project(project: Project, limit: int=None):
-        return Task.objects.filter(project__name__contains=project.name)[:limit]
+        project_tasks = Task.objects.filter(project__name__contains=project.name)[:limit]
+        return [project for project in project_tasks if not project.complete]
 
     @staticmethod
     def get_task_or_404(task_id):
@@ -40,8 +41,8 @@ class TaskService:
             description=description,
             project=project,
             priority=priority,
-            todoistIdid=todoistId,
-            nextDue=nextDue
+            todoistId=todoistId,
+            next_due=nextDue
         )
         if commit:
             task.save()
@@ -69,6 +70,7 @@ class TaskService:
         Updates a task
         """
         update_data ={}
+        update_data["id"] = task.todoistId
         update_data["priority"] = task.priority
         update_data["description"] = task.description
         update_data["content"] = task.content
@@ -93,3 +95,5 @@ class TaskService:
         return todoistId in [
             task["id"] for task in TodoistService.getAllTasks()
         ]
+
+    

@@ -43,12 +43,16 @@ class TodoistService:
         Deletes a project
         """
         project = TodoistService._todoist.projects.get_by_id(TodoistService.format_id(id))
-        project.delete()
+        if project is not None:
+            project.delete()
         f_id = TodoistService.format_id(id)
         if isinstance(f_id, str):
-            match_project = [project for project in TodoistService._todoist.state["projects"]
-                             if project.temp_id == id][0]
-            TodoistService._todoist.state["projects"].remove(match_project)
+            try:
+                match_project = [project for project in TodoistService._todoist.state["projects"]
+                                 if project.temp_id == id][0]
+                TodoistService._todoist.state["projects"].remove(match_project)
+            except IndexError:
+                pass
         TodoistService.commit()
 
     @staticmethod
@@ -156,11 +160,11 @@ class TodoistService:
         Updates a task for a given id, data is handed to todoist.sync api
         """
         data = copy(data)
-        task = TodoistService._todoist.items.get_by_id(TodoistService.format_id(data["id"]))
+        task = TodoistService._todoist.items.get_by_id(TodoistService.format_id(int(data["id"])))
         if "id" in data:
             del data["id"]
-        task.update(data)
-        TodoistService.sync()
+        task.update(**data)
+        TodoistService.commit()
 
     @staticmethod
     def completeTask(id: str) -> None:
@@ -169,7 +173,7 @@ class TodoistService:
         """
         task = TodoistService._todoist.items.get_by_id(TodoistService.format_id(id))
         task.close()
-        TodoistService.sync()
+        TodoistService.commit()
     
     @staticmethod
     def _formatProjectExport(project) -> dict:

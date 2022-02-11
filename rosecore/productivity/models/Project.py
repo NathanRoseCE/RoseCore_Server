@@ -18,6 +18,6 @@ class Project(models.Model):
 
     @property
     def synced(self) -> bool:
-        return self.unsyncedSource == ""
+        return not self.unsyncedSource.strip()
 
     

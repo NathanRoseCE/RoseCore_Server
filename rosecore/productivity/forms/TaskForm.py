@@ -3,6 +3,7 @@ from django.db.models.query_utils import DeferredAttribute
 from productivity import models
 from productivity.services.TaskService import TaskService
 from productivity.models.Project import Project
+import logging
 
 class TaskForm(forms.ModelForm):
 
@@ -33,6 +34,7 @@ class TaskForm(forms.ModelForm):
         args["priority"] = self.cleaned_data['priority']
         args["complete"] = self.cleaned_data['complete']
         if task_id is None:
+            print(args)
             TaskService.createTask(**args)
         else:
             task = self.instance

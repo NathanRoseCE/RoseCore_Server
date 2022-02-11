@@ -58,8 +58,11 @@ class TogglService:
         """
         deletes a project with a specified id
         """
-        project = [project for project in TogglService._toggl.projects if str(project_id) == str(project.id)][0]
-        TogglService._toggl.deleteProject(project)
+        try:
+            project = [project for project in TogglService._toggl.projects if str(project_id) == str(project.id)][0]
+            TogglService._toggl.deleteProject(project)
+        except IndexError:
+            pass
         TogglService.sync()
 
     @staticmethod

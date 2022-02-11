@@ -21,7 +21,7 @@
       {{ form.as_p }}
       <input type="submit" value="Submit">
     </form>
-    {% if not project.synced %}
+    {% if project.synced %}
     <div class="project_actions">
       <button class="project_action sync_action" onclick="window.location.href='{% url 'productivity:auto_sync' project_id=project_id %}';">
 	Autosync
@@ -33,16 +33,23 @@
 	Delete Project
       </button>
     </div>
+    {% else %}
+    <div>
+      <h1>WARNING PROJECT IS NOT SYNCED</h1>
+      project is from '{{ project.unsyncedSource }}'
+    </div>
     {% endif %}
     <h2>tasks</h2>
-    <ul>
-      {% for task in tasks %}
-      <li>task.content</li>
-      {% endfor %}
-      <button class="project_action sync_action" onclick="window.location.href='{% url 'productivity:create_task' %}';">
-	Create Task
-      </button>
-    </ul>
+    <div>
+      <ul>
+	{% for task in tasks %}
+	<li>{% include "task/taskOneLine.html" with task=task %}</li>
+	{% endfor %}
+      </ul>
+    </div>
+    <button class="project_action sync_action" onclick="window.location.href='{% url 'productivity:create_task' %}';">
+      Create Task
+    </button>
   </body>
 <html>
   

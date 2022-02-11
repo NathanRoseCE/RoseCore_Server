@@ -181,6 +181,14 @@ class ProjectService:
         unsynced_project.delete()
 
     @staticmethod
+    def nuke_all_unsynced() -> None:
+        """
+        deletes all unsynced projects
+        """
+        for project in Project.objects.all():
+            if not project.synced:
+                ProjectService.deleteProject(project)
+    @staticmethod
     def _ensure_client_projects_present(save: bool=True):
         """
         For all projects in the databse that are synced, ensure that

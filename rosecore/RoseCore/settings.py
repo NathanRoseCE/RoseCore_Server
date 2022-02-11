@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 import sys
+import logging
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +34,8 @@ ALLOWED_HOSTS = [
 BACKUP_DIR='/usr/src/rosecore/backups/'
 
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+if TESTING:
+    logging.info("staring up in testing mode")
 # Application definition
 
 INSTALLED_APPS = [
